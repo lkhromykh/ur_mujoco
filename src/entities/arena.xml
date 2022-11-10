@@ -1,0 +1,26 @@
+<mujoco model="base">
+    <compiler coordinate="local" angle="radian" autolimits="true"
+        eulerseq="xyz" boundmass="1e-5" boundinertia="1e-11"/>
+
+    <option cone="elliptic" noslip_iterations="5" noslip_tolerance="0"
+        timestep="0.002" viscosity="2e-5"/>
+
+    <asset>
+        <texture name="skybox" type="skybox" builtin="gradient"
+                 rgb1=".4 .6 .8" rgb2="0 0 0"  width="800" height="800"
+                 mark="random" markrgb="1 1 1"/>
+        <texture type="2d" name="groundplane" builtin="checker" mark="edge"
+                 rgb1="0.2 0.3 0.4" rgb2="0.1 0.2 0.3" markrgb="0.8 0.8 0.8"
+                 width="300" height="300"/>
+        <material name="groundplane" texture="groundplane" texuniform="true"
+                  texrepeat="5 5" reflectance="0.2"/>
+      </asset>
+
+    <visual>
+        <map znear="0.01"/>
+        <headlight diffuse=".6 .6 .6" ambient=".3 .3 .3" specular="0 0 0"/>
+        <scale forcewidth="0.1" contactwidth="0.3" contactheight="0.1"
+        jointwidth=".1" framewidth=".1" framelength="1."/>
+    </visual>
+
+</mujoco>
