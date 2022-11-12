@@ -1,5 +1,4 @@
 import os
-from typing import Iterable
 
 from dm_control import mjcf
 from dm_control import composer

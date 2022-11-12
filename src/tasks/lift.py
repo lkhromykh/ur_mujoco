@@ -1,31 +1,27 @@
-import abc
 import itertools
-from typing import Optional, Iterable, NamedTuple
+import collections
 
 import numpy as np
-import tree
 from dm_env import specs
 from dm_control import composer
 from dm_control.composer import observation
 from dm_control.composer import initializers
+from dm_control.manipulation.props import primitive
 from dm_control.manipulation.shared import workspaces
 from dm_control.composer.variation import distributions
 
 from src import constants
-from src.entities import Arena, Robotiq2f85, UR5e, primitive, cameras
+from src.entities import Arena, Robotiq2f85, UR5e, cameras
 
-
-class LiftWorkspace(NamedTuple):
-    prop_bbox: workspaces.BoundingBox
-    tcp_bbox: workspaces.BoundingBox
-    arm_offset: np.ndarray = constants.ARM_OFFSET
+_LiftWorkspace = collections.namedtuple(
+    'LiftWorkspace', ['prop_bbox', 'tcp_bbox', 'arm_offset'])
 
 
 _DISTANCE_TO_LIFT = .1
 _BOX_SIZE = (.05, .03, .02)
 _BOX_MASS = .3
-_CTRL_LIM = .07
-_DEFAULT_WORKSPACE = LiftWorkspace(
+_CTRL_LIM = .04
+_DEFAULT_WORKSPACE = _LiftWorkspace(
     prop_bbox=workspaces.BoundingBox(
         lower=(-.1, -.1, .02), upper=(.1, .1, .05)),
     tcp_bbox=workspaces.BoundingBox(
@@ -65,7 +61,7 @@ class _BoxWithVertexSites(primitive.Box, _VertexSitesMixin):
 
 class Lift(composer.Task):
     def __init__(self,
-                 workspace: LiftWorkspace = _DEFAULT_WORKSPACE,
+                 workspace: _LiftWorkspace = _DEFAULT_WORKSPACE,
                  control_timestep: float = constants.CONTROL_TIMESTEP
                  ):
         self._arena = Arena()

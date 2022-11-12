@@ -7,22 +7,8 @@ _ARENA_XML_PATH = os.path.join(os.path.dirname(__file__), 'arena.xml')
 
 
 class Arena(Entity):
-#todo: add viscousity
-    def _build(self, name=None):
+    def _build(self):
         self._mjcf_root = mjcf.from_path(_ARENA_XML_PATH)
-
-        if name:
-            self._mjcf_root.model = name
-
-        # self.mjcf_model.asset.add(
-        #     'texture',
-        #     type='skybox',
-        #     builtin='gradient',
-        #     rgb1=(0.4, 0.6, 0.8),
-        #     rgb2=(0., 0., 0.),
-        #     width=100,
-        #     height=100
-        # )
         self.mjcf_model.worldbody.add(
             'geom',
             name='ground',
@@ -73,22 +59,22 @@ def _connect_mocap(body):
         pos=pos,
         mocap='true'
     )
-    # mc_body.add(
-    #     'geom',
-    #     name='mocap',
-    #     pos=pos,
-    #     type='sphere',
-    #     conaffinity=0,
-    #     contype=0,
-    #     size='.03'
-    # )
-    # mc_body.add(
-    #     'site',
-    #     name='mocap',
-    #     pos=pos,
-    #     type='box',
-    #     size='.03'
-    # )
+    mc_body.add(
+        'geom',
+        name='mocap',
+        pos=pos,
+        type='sphere',
+        conaffinity=0,
+        contype=0,
+        size='.03'
+    )
+    mc_body.add(
+        'site',
+        name='mocap',
+        pos=pos,
+        type='box',
+        size='.03'
+    )
     mocap.equality.add(
         'weld',
         name='mocap_weld',
