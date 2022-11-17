@@ -12,6 +12,7 @@ _UR5E_XML_PATH = os.path.join(
 class UR5e(RobotArm):
     def _build(self):
         self._mjcf_model = mjcf.from_path(_UR5E_XML_PATH)
+        self._mjcf_model.find('light', 'spotlight').remove()
         self._mjcf_model.keyframe.remove()
         self._joints = self.mjcf_model.find_all('joint')
         self._wrist_site = self.mjcf_model.find('site', 'attachment_site')

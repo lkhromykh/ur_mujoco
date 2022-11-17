@@ -5,6 +5,8 @@ from dm_control import composer
 from dm_control.composer.observation import observable
 from dm_control.entities.manipulators.base import RobotHand, DOWN_QUATERNION
 
+from src import constants
+
 _ROBOTIQ2F85_XML_PATH = os.path.join(
     os.path.dirname(__file__),
     '../third_party/mujoco_menagerie/robotiq_2f85/2f85.xml'
@@ -21,6 +23,7 @@ class Robotiq2f85(RobotHand):
             'site',
             name='tcp_center_point',
             pos=[0, 0, .1493],
+            group=constants.TASK_SITE_GROUP
             # quat=DOWN_QUATERNION
         )
 

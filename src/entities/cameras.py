@@ -4,37 +4,50 @@ import collections
 from dm_control import composer
 from dm_control.composer.observation import observable
 
-CameraSpec = collections.namedtuple('CameraSpec', ['name', 'pos', 'xyaxes'])
+CameraSpec = collections.namedtuple(
+    'CameraSpec', ['name', 'pos', 'xyaxes', 'fovy'])
 
 FRONT_CLOSE = CameraSpec(
     name='front_close',
     pos=(0., -0.6, 0.75),
-    xyaxes=(1., 0., 0., 0., 0.7, 0.75)
+    xyaxes=(1., 0., 0., 0., 0.7, 0.75),
+    fovy=45
 )
 
 FRONT_FAR = CameraSpec(
     name='front_far',
     pos=(0., -0.8, 1.),
-    xyaxes=(1., 0., 0., 0., 0.7, 0.75)
+    xyaxes=(1., 0., 0., 0., 0.7, 0.75),
+    fovy=45
 )
 
 TOP_DOWN = CameraSpec(
     name='top_down',
     pos=(0., 0., 2.5),
-    xyaxes=(1., 0., 0., 0., 1., 0.)
+    xyaxes=(1., 0., 0., 0., 1., 0.),
+    fovy=45
 )
 
 LEFT_CLOSE = CameraSpec(
     name='left_close',
     pos=(-0.6, 0., 0.75),
-    xyaxes=(0., -1., 0., 0.7, 0., 0.75)
+    xyaxes=(0., -1., 0., 0.7, 0., 0.75),
+    fovy=45
 )
 
 
 RIGHT_CLOSE = CameraSpec(
     name='right_close',
     pos=(0.6, 0., 0.75),
-    xyaxes=(0., 1., 0., -0.7, 0., 0.75)
+    xyaxes=(0., 1., 0., -0.7, 0., 0.75),
+    fovy=45
+)
+
+KINECT = CameraSpec(
+    name='kinect',
+    pos=(-1., .2, .54),
+    xyaxes=(-.2, -.9, 0, .3, 0, .8),
+    fovy=65
 )
 
 
