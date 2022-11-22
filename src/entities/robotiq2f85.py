@@ -14,6 +14,8 @@ _ROBOTIQ2F85_XML_PATH = os.path.join(
 
 
 class Robotiq2f85(RobotHand):
+    """Robotiq 2F85 gripper."""
+
     def _build(self):
         self._mjcf_model = mjcf.from_path(_ROBOTIQ2F85_XML_PATH)
         self._actuators = self.mjcf_model.find_all('actuator')

@@ -10,6 +10,8 @@ _UR5E_XML_PATH = os.path.join(
 
 
 class UR5e(RobotArm):
+    """UR5e arm."""
+
     def _build(self):
         self._mjcf_model = mjcf.from_path(_UR5E_XML_PATH)
         self._mjcf_model.find('light', 'spotlight').remove()

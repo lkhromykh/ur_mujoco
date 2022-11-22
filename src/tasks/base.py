@@ -17,8 +17,8 @@ from src.entities import Arena, Robotiq2f85, UR5e, cameras
 
 class RgbVariation(colors.RgbVariation):
     def __init__(self, low=0., high=1.):
-        n_fn = lambda: distributions.Uniform(low, high, single_sample=True)
-        super().__init__(n_fn(), n_fn(), n_fn())
+        def d_fn(): return distributions.Uniform(low, high, single_sample=True)
+        super().__init__(d_fn(), d_fn(), d_fn())
 
     def __call__(self,
                  initial_value=None,
@@ -39,7 +39,13 @@ class BaseWorkspace(NamedTuple):
     arm_offset: np.ndarray = constants.ARM_OFFSET
 
 
-class BaseTask(composer.Task, abc.ABC):
+DEFAULT_SCENE_BBOX = workspaces.BoundingBox(
+    lower=np.array([-.7, -.4, 0.]),
+    upper=np.array([.1, .4, .8])
+)
+
+
+class Task(composer.Task, abc.ABC):
 
     def __init__(self,
                  workspace: BaseWorkspace,
@@ -68,17 +74,17 @@ class BaseTask(composer.Task, abc.ABC):
             self._arena, cameras.KINECT, width=img_size[0], height=img_size[1]
         )
         self._kinect = self._cameras['kinect']
+        # add gripper object detected obs?
 
         self._mjcf_variation = variation.MJCFVariator()
         self._physics_variation = variation.PhysicsVariator()
         self._built = False
 
-    def _build(self):
+    def __post_init__(self):
         self._build_observables()
         self._build_variations()
         self._built = True
 
-    # @abc.abstractmethod
     def _build_observables(self):
         """Decide what will agent observe."""
         self._arena.observables.enable_all()
@@ -88,7 +94,6 @@ class BaseTask(composer.Task, abc.ABC):
         for obs in self._task_observables.values():
             obs.enabled = True
 
-    # @abc.abstractmethod
     def _build_variations(self):
         """Domain randomization goes here."""
         uni = distributions.Uniform
@@ -115,24 +120,30 @@ class BaseTask(composer.Task, abc.ABC):
             self._mjcf_variation.bind_attributes(
                 light,
                 pos=noises.Additive(uni(-5, .5)),
-                diffuse=uni(.2, .6),
+                diffuse=uni(.3, .7),
                 specular=uni(.1, .4),
                 ambient=uni(high=.3)
             )
         for cam in self.root_entity.mjcf_model.worldbody.find_all('camera'):
             self._mjcf_variation.bind_attributes(
                 cam,
-                pos=noises.Additive(uni(-.15, .15)),
-                xyaxes=noises.Multiplicative(uni(.8, 1.2)),
-                fovy=noises.Additive(uni(-20, 20)),
+                pos=noises.Additive(uni(-.1, .1)),
+                xyaxes=noises.Multiplicative(uni(.7, 1.3)),
+                fovy=noises.Additive(uni(-10, 10)),
             )
 
     def initialize_episode_mjcf(self, random_state):
+        """Apply domain randomization and recompile model."""
         if not self._built:
-            self._build()
+            self.__post_init__()
         self._mjcf_variation.apply_variations(random_state)
 
     def initialize_episode(self, physics, random_state):
+        """Init scene.
+
+        Arm and gripper init is done according to a task workspace.
+        Task specific objects should be inited after.
+        """
         self._physics_variation.apply_variations(physics, random_state)
         weld = physics.bind(self._weld)
         base = physics.bind(self._hand.base)
@@ -175,7 +186,7 @@ class BaseTask(composer.Task, abc.ABC):
         return mocap.mocap_pos, mocap.mocap_quat
 
     def _set_mocap(self, physics, pos, quat):
-        """Mocap body pos is limited to a task bounding box."""
+        """A mocap body pos is limited to a task bounding box."""
         mocap = physics.bind(self._mocap)
         sbb = self._workspace.scene_bbox
         pos = np.clip(pos, a_min=sbb.lower, a_max=sbb.upper)

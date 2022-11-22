@@ -9,6 +9,7 @@ _BASE_XML_PATH = os.path.join(os.path.dirname(__file__), 'base.xml')
 
 
 class Arena(Entity):
+    """Table on which a robot resids."""
 
     def _build(self):
         self._mjcf_root = mjcf.from_path(_BASE_XML_PATH)
@@ -80,7 +81,7 @@ class Arena(Entity):
         return frame
 
     def insert_mocap(self, body: mjcf.Element):
-        mocap = _connect_mocap(body)
+        mocap = _connect_mocap(body, visual=constants.DEBUG)
         self.mjcf_model.include_copy(mocap)
         return self.mjcf_model.find('body', 'mocap')
 

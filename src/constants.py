@@ -1,5 +1,7 @@
 import numpy as np
 
+DEBUG = False
+
 # Predefined RGBA values
 RED = (1., 0., 0., 0.3)
 GREEN = (0., 1., 0., 0.3)
@@ -16,7 +18,6 @@ CONTROL_TIMESTEP = .5
 
 ARM_OFFSET = (0, 0, 0)
 HOME = np.array([1.5708, -1.5708,  1.5708, -1.5708, -1.5708,  0.])
-DEFAULT_BOX_HALFSIZE = (.05, .03, .02)
 
 DOWN_QUATERNION = np.array([0., 0.70710678118, 0.70710678118, 0.])
 CTRL_LIMIT = .05
