@@ -54,10 +54,12 @@ KINECT = CameraSpec(
 def add_camera_observables(entity: composer.Entity,
                            *camera_specs: CameraSpec,
                            **kwargs
-                           ) -> collections.OrderedDict:
+                           ):
     obs_dict = collections.OrderedDict()
+    cameras = collections.OrderedDict()
     for spec in camera_specs:
         camera = entity.mjcf_model.worldbody.add('camera', **spec._asdict())
         obs = observable.MJCFCamera(camera, **kwargs)
+        cameras[spec.name] = camera
         obs_dict[spec.name] = obs
-    return obs_dict
+    return obs_dict, cameras

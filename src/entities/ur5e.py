@@ -32,5 +32,9 @@ class UR5e(RobotArm):
         return self._actuators
 
     @property
+    def bodies(self):
+        return self._bodies
+
+    @property
     def mjcf_model(self):
         return self._mjcf_model

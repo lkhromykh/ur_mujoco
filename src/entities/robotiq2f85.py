@@ -3,7 +3,7 @@ import os
 from dm_control import mjcf
 from dm_control import composer
 from dm_control.composer.observation import observable
-from dm_control.entities.manipulators.base import RobotHand, DOWN_QUATERNION
+from dm_control.entities.manipulators.base import RobotHand
 
 from src import constants
 
@@ -19,18 +19,19 @@ class Robotiq2f85(RobotHand):
         self._actuators = self.mjcf_model.find_all('actuator')
         self._joints = self.mjcf_model.find_all('joint')
         self._base = self.mjcf_model.find('body', 'base_mount')
+        self._bodies = self.mjcf_model.find_all('body')
         self._tcp_site = self._base.add(
             'site',
             name='tcp_center_point',
             pos=[0, 0, .1493],
             group=constants.TASK_SITE_GROUP
-            # quat=DOWN_QUATERNION
         )
 
     def _build_observables(self):
         return RobotiqObservables(self)
 
     def set_grasp(self, physics, close_factor):
+        """[0., 1.] -> uint8"""
         ctrl = int(255 * close_factor)
         physics.set_control(ctrl)
 
@@ -49,6 +50,10 @@ class Robotiq2f85(RobotHand):
     @property
     def joints(self):
         return self._joints
+
+    @property
+    def bodies(self):
+        return self._bodies
 
     @property
     def base(self):
