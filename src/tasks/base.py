@@ -186,7 +186,7 @@ class Task(composer.Task, abc.ABC):
         return mocap.mocap_pos, mocap.mocap_quat
 
     def _set_mocap(self, physics, pos, quat):
-        """A mocap body pos is limited to a task bounding box."""
+        """Mocap body pos is limited to a task bounding box."""
         mocap = physics.bind(self._mocap)
         sbb = self._workspace.scene_bbox
         pos = np.clip(pos, a_min=sbb.lower, a_max=sbb.upper)

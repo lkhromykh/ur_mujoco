@@ -11,10 +11,10 @@ from dm_control.composer.variation import distributions
 from src import constants
 from src.tasks import base
 
-_DISTANCE_TO_LIFT = .2
+_DISTANCE_TO_LIFT = .1
 _BOX_OFFSET = np.array([-.5, .05, .1])
 _BOX_SIZE = (.05, .03, .02)
-_BOX_MASS = .3
+_BOX_MASS = .1
 
 
 class _LiftWorkspace(NamedTuple):
@@ -127,8 +127,9 @@ class Lift(base.Task):
         self._prop.observables.enable_all()
 
     def initialize_episode_mjcf(self, random_state):
-        super().initialize_episode_mjcf(random_state)
-        self._prop.add_vertex_sites(self._prop.geom)
+        pass
+        # super().initialize_episode_mjcf(random_state)
+        # self._prop.add_vertex_sites(self._prop.geom)
 
     def initialize_episode(self, physics, random_state):
         self._prepare_goal(physics, random_state)
