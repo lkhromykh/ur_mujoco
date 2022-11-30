@@ -26,7 +26,7 @@ class Robotiq2f85(RobotHand):
             'site',
             name='tcp_center_point',
             pos=[0, 0, .1493],
-            group=constants.TASK_SITE_GROUP
+            group=constants.MOCAP_SITE_GROUP
         )
 
     def _build_observables(self):
@@ -58,7 +58,7 @@ class Robotiq2f85(RobotHand):
         return self._bodies
 
     @property
-    def base(self):
+    def base_mount(self):
         return self._base
 
 
@@ -68,6 +68,7 @@ class RobotiqObservables(composer.Observables):
     def tcp_pose(self):
         return observable.MJCFFeature('xpos', self._entity.tool_center_point)
 
-    @composer.observable
+    # For now tcp has fixed orientation.
+    # @composer.observable
     def tcp_rmat(self):
         return observable.MJCFFeature('xmat', self._entity.tool_center_point)

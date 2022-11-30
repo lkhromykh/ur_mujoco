@@ -138,7 +138,7 @@ def _connect_mocap(body: mjcf.Element,
         pos=pos,
         type='sphere',
         size='.03',
-        group=constants.TASK_SITE_GROUP
+        group=constants.MOCAP_SITE_GROUP
     )
     mocap.equality.add(
         'weld',

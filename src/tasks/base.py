@@ -6,6 +6,7 @@ from dm_env import specs
 from dm_control import composer
 from dm_control.composer import variation
 from dm_control.composer import initializers
+from dm_control.composer.observation import observable
 from dm_control.manipulation.shared import workspaces
 from dm_control.composer.variation import (
     colors, noises, distributions, variation_values
@@ -40,8 +41,8 @@ class BaseWorkspace(NamedTuple):
 
 
 DEFAULT_SCENE_BBOX = workspaces.BoundingBox(
-    lower=np.array([-.7, -.4, 0.]),
-    upper=np.array([.1, .4, .8])
+    lower=np.array([-.5, -.3, 0.]),
+    upper=np.array([.0, .4, .6])
 )
 
 
@@ -62,7 +63,7 @@ class Task(composer.Task, abc.ABC):
         self._hand = Robotiq2f85()
         self._arm.attach(self._hand)
         self._arena.attach_offset(self._arm, offset=workspace.arm_offset)
-        self._mocap = self._arena.insert_mocap(self._hand.base)
+        self._mocap = self._arena.insert_mocap(self._hand.base_mount)
         self._weld = self._arena.mjcf_model.find('equality', 'mocap_weld')
 
         self._tcp_initializer = initializers.ToolCenterPointInitializer(
@@ -76,14 +77,31 @@ class Task(composer.Task, abc.ABC):
         self._kinect = self._cameras['kinect']
         # add gripper object detected obs?
 
+        for camera in self._cameras:
+            def depth_map(physics):
+                return physics.render(camera_id=camera,
+                                      width=img_size[0],
+                                      height=img_size[1],
+                                      depth=True
+                                      )
+            self._task_observables[f'{camera}/depth_map'] =\
+                observable.Generic(depth_map)
+
+        workspaces.add_bbox_site(
+            body=self.root_entity.mjcf_model.worldbody,
+            lower=workspace.scene_bbox.lower, upper=workspace.scene_bbox.upper,
+            rgba=constants.CYAN, name='mocap_pos_area')
+
         self._mjcf_variation = variation.MJCFVariator()
         self._physics_variation = variation.PhysicsVariator()
-        self._built = False
+        self.__built = False
 
     def __post_init__(self):
+        # TODO: bad decision. One should be able to get correct obs_space
+        #   prior to any resets. So this must be called directly in __init__.
         self._build_observables()
         self._build_variations()
-        self._built = True
+        self.__built = True
 
     def _build_observables(self):
         """Decide what will agent observe."""
@@ -105,7 +123,7 @@ class Task(composer.Task, abc.ABC):
         )
         self._mjcf_variation.bind_attributes(
             self._hand.tool_center_point,
-            pos=noises.Multiplicative(uni(.8, 1.2))
+            pos=noises.Multiplicative(uni(.9, 1.1))
         )
         for mat in self.root_entity.mjcf_model.asset.find_all('material'):
             self._mjcf_variation.bind_attributes(
@@ -134,7 +152,7 @@ class Task(composer.Task, abc.ABC):
 
     def initialize_episode_mjcf(self, random_state):
         """Apply domain randomization and recompile model."""
-        if not self._built:
+        if not self.__built:
             self.__post_init__()
         self._mjcf_variation.apply_variations(random_state)
 
@@ -146,7 +164,7 @@ class Task(composer.Task, abc.ABC):
         """
         self._physics_variation.apply_variations(physics, random_state)
         weld = physics.bind(self._weld)
-        base = physics.bind(self._hand.base)
+        base = physics.bind(self._hand.base_mount)
         joints = physics.bind(self._arm.joints)
         tcp = physics.bind(self._hand.tool_center_point)
         eq_data = weld.data
@@ -159,9 +177,8 @@ class Task(composer.Task, abc.ABC):
         eq_data[3:6] = -tcp.pos
         eq_data[6:10] = np.array([1, 0, 0, 0])
         eq_data[10] = 1
-        weld.data = eq_data  # comment this
-        physics.forward()
         weld.active = 1
+        physics.forward()
 
     def before_step(self, physics, action, random_state):
         pos, grip = action[:-1], action[-1]

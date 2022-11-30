@@ -61,5 +61,5 @@ def add_camera_observables(entity: composer.Entity,
         camera = entity.mjcf_model.worldbody.add('camera', **spec._asdict())
         obs = observable.MJCFCamera(camera, **kwargs)
         cameras[spec.name] = camera
-        obs_dict[spec.name] = obs
+        obs_dict[f'{spec.name}/image'] = obs
     return obs_dict, cameras

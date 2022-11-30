@@ -46,6 +46,8 @@ class ReachMocap(composer.Task):
                  control_timestep: float = constants.CONTROL_TIMESTEP,
                  img_size=(84, 84)
                  ):
+        import logging
+        logging.error("This task wasn't updated for a while.")
         self._arena = Arena()
         self._arm = UR5e()
         self._arm.mjcf_model.actuator.remove()
@@ -55,7 +57,7 @@ class ReachMocap(composer.Task):
         self.control_timestep = control_timestep
         self._workspace = workspace
 
-        self._mocap = self._arena.insert_mocap(self._hand.base)
+        self._mocap = self._arena.insert_mocap(self._hand.base_mount)
         self._weld = self._arena.mjcf_model.find('equality', 'mocap_weld')
 
         self._tcp_initializer = initializers.ToolCenterPointInitializer(
@@ -122,7 +124,7 @@ class ReachMocap(composer.Task):
 
     def initialize_episode(self, physics, random_state):
         weld = physics.bind(self._weld)
-        base = physics.bind(self._hand.base)
+        base = physics.bind(self._hand.base_mount)
         tcp = physics.bind(self._hand.tool_center_point)
         eq_data = weld.data
         weld.active = 0
