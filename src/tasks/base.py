@@ -91,6 +91,10 @@ class Task(composer.Task, abc.ABC):
             body=self.root_entity.mjcf_model.worldbody,
             lower=workspace.scene_bbox.lower, upper=workspace.scene_bbox.upper,
             rgba=constants.CYAN, name='mocap_pos_area')
+        workspaces.add_bbox_site(
+            body=self.root_entity.mjcf_model.worldbody,
+            lower=workspace.tcp_bbox.lower, upper=workspace.tcp_bbox.upper,
+            rgba=constants.GREEN, name='tcp_spawn_area')
 
         self._mjcf_variation = variation.MJCFVariator()
         self._physics_variation = variation.PhysicsVariator()
@@ -131,7 +135,7 @@ class Task(composer.Task, abc.ABC):
                 rgba=RgbVariation(),
                 specular=uni(high=.6),
                 shininess=uni(high=.6),
-                reflectance=uni(high=.1)
+                reflectance=uni(high=.03)
             )
 
         for light in self.root_entity.mjcf_model.worldbody.find_all('light'):

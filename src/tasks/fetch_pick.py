@@ -1,5 +1,5 @@
-from typing import NamedTuple, Tuple
-import itertools
+# TODO: remove duplication.
+from typing import Tuple
 
 import numpy as np
 from dm_control.composer import initializers
@@ -9,90 +9,32 @@ from dm_control.composer.variation import distributions
 
 from src import constants
 from src.tasks import base
-from src.entities import Box
+from src.tasks import lift
 
 _DISTANCE_TO_LIFT = .1
 _BOX_OFFSET = np.array([-.5, .05, .1])
 _BOX_SIZE = (.05, .03, .02)
 _BOX_MASS = .1
 
-
-class _LiftWorkspace(NamedTuple):
-    tcp_bbox: workspaces.BoundingBox
-    scene_bbox: workspaces.BoundingBox
-    arm_offset: np.ndarray
-    prop_bbox: workspaces.BoundingBox
+_EASY_THRESHOLD = .05
+_HARD_THRESHOLD = .01
 
 
-DEFAULT_WORKSPACE = _LiftWorkspace(
-    tcp_bbox=workspaces.BoundingBox(
-        lower=_BOX_OFFSET + np.array([-.1, -.1, .2]),
-        upper=_BOX_OFFSET + np.array([.1, .1, .4])
-    ),
-    scene_bbox=base.DEFAULT_SCENE_BBOX,
-    prop_bbox=workspaces.BoundingBox(
-        lower=_BOX_OFFSET + np.array([-.1, -.1, 0.]),
-        upper=_BOX_OFFSET + np.array([.1, .1, 0.]),
-    ),
-    arm_offset=constants.ARM_OFFSET
-)
-
-
-class _VertexSitesMixin:
-    """It differs from dm_control version in sites treatment:
-    existing sites will alternate instead of creating new every time."""
-
-    def add_vertex_sites(self, box_geom_or_site):
-        """Add sites corresponding to the vertices of a box geom or site."""
-        offsets = (
-            (-half_length, half_length)
-            for half_length in box_geom_or_site.size
-        )
-        site_positions = np.vstack(itertools.product(*offsets))
-        if box_geom_or_site.pos is not None:
-            site_positions += box_geom_or_site.pos
-        self._vertices = []
-        for i, pos in enumerate(site_positions):
-            name = 'vertex_' + str(i)
-            site = box_geom_or_site.parent.find('site', name)
-            if site is None:
-                site = box_geom_or_site.parent.add(
-                    'site', name=name,
-                    pos=pos, type='sphere', size=[0.002],
-                    rgba=constants.RED, group=constants.TASK_SITE_GROUP)
-            else:
-                site.pos = pos
-            self._vertices.append(site)
-
-    @property
-    def vertices(self):
-        return self._vertices
-
-
-class BoxWithVertexSites(Box, _VertexSitesMixin):
-    """Subclass of `Box` with sites marking the vertices of the box geom."""
-
-    def _build(self, *args, **kwargs):
-        super()._build(*args, **kwargs)
-
-    def initialize_episode_mjcf(self, random_state):
-        self.touch_site.size = 1.05 * self.geom.size
-        self.add_vertex_sites(self.geom)
-
-
-class Lift(base.Task):
+class FetchPick(base.Task):
+    """Closely resembles Lift task but require
+    to fetch box in a precise position not just height level."""
     def __init__(self,
-                 workspace: _LiftWorkspace = DEFAULT_WORKSPACE,
+                 workspace: lift._LiftWorkspace = lift.DEFAULT_WORKSPACE,
                  control_timestep: float = constants.CONTROL_TIMESTEP,
                  img_size: Tuple[int, int] = (84, 84),
-                 target_height: float = _DISTANCE_TO_LIFT
+                 threshold_dist: float = _EASY_THRESHOLD
                  ):
         super().__init__(workspace, control_timestep, img_size)
-        self._prop = BoxWithVertexSites(half_lengths=_BOX_SIZE, mass=_BOX_MASS)
+        self._prop = lift.BoxWithVertexSites(
+            half_lengths=_BOX_SIZE, mass=_BOX_MASS)
         self._prop.geom.rgba = (1, 0, 0, 1)
         self._arena.add_free_entity(self._prop)
-        self._target_height = target_height
-        self._episode_height = None
+        self._threshold = threshold_dist
 
         self._prop_placer = initializers.PropPlacer(
             props=[self._prop],
@@ -103,10 +45,13 @@ class Lift(base.Task):
             settle_physics=True
         )
 
-        self._target_height_site = workspaces.add_bbox_site(
+        self._target_site = workspaces.add_target_site(
             body=self.root_entity.mjcf_model.worldbody,
-            lower=(-1, -1, 0), upper=(1, 1, 0),
-            rgba=constants.RED, name='target_height')
+            radius=threshold_dist,
+            visible=False,
+            rgba=constants.RED,
+            name='target_distance'
+        )
         workspaces.add_bbox_site(
             body=self.root_entity.mjcf_model.worldbody,
             lower=workspace.prop_bbox.lower, upper=workspace.prop_bbox.upper,
@@ -135,25 +80,20 @@ class Lift(base.Task):
     def initialize_episode(self, physics, random_state):
         self._place_prop_in_hand(physics, random_state)
         self._prepare_goal(physics, random_state)
+        physics.bind(self._target_site).pos = self._goal_pos
         self._prop.set_velocity(physics, np.zeros(3), np.zeros(3))
 
         lifted_start = random_state.choice(2)
         if lifted_start:
             self._place_prop_in_hand(physics, random_state)
-            self._episode_height = self._target_height
         else:
             super().initialize_episode(physics, random_state)
             self._prop_placer(physics, random_state)
-            initial_prop_height = self._get_height_of_lowest_vertex(physics)
-            self._episode_height = self._target_height + initial_prop_height
-        physics.bind(self._target_height_site).pos[2] = self._episode_height
-
-    def _get_height_of_lowest_vertex(self, physics):
-        return min(physics.bind(self._prop.vertices).xpos[:, 2])
 
     def get_reward(self, physics):
-        prop_height = self._get_height_of_lowest_vertex(physics)
-        return 5 * float(prop_height > self._target_height)
+        pos, _ = self._prop.get_pose(physics)
+        dist = np.linalg.norm(pos - self._goal_pos)
+        return float(dist < self._threshold)
 
     # TODO: fix impossible configurations that lead to divergences.
     def _place_prop_in_hand(self, physics, random_state):
