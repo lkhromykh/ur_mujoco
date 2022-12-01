@@ -16,7 +16,7 @@ _BOX_OFFSET = np.array([-.5, .05, .1])
 _BOX_SIZE = (.05, .03, .02)
 _BOX_MASS = .1
 
-_EASY_THRESHOLD = .05
+_EASY_THRESHOLD = .02
 _HARD_THRESHOLD = .01
 
 
@@ -57,6 +57,8 @@ class FetchPick(base.Task):
             lower=workspace.prop_bbox.lower, upper=workspace.prop_bbox.upper,
             rgba=constants.BLUE, name='prop_spawn_area')
 
+        self.eval_flag = False
+
         self.__post_init__()
 
     def _build_variations(self):
@@ -84,7 +86,7 @@ class FetchPick(base.Task):
         self._prop.set_velocity(physics, np.zeros(3), np.zeros(3))
 
         lifted_start = random_state.choice(2)
-        if lifted_start:
+        if lifted_start and not self.eval_flag:
             self._place_prop_in_hand(physics, random_state)
         else:
             super().initialize_episode(physics, random_state)
