@@ -41,8 +41,8 @@ class BaseWorkspace(NamedTuple):
 
 
 DEFAULT_SCENE_BBOX = workspaces.BoundingBox(
-    lower=np.array([-.5, -.3, 0.]),
-    upper=np.array([.0, .4, .6])
+    lower=np.array([-.7, -.2, 0.]),
+    upper=np.array([-.2, .3, .5])
 )
 
 
@@ -74,18 +74,16 @@ class Task(composer.Task, abc.ABC):
         self._task_observables, self._cameras = cameras.add_camera_observables(
             self._arena, cameras.KINECT, width=img_size[0], height=img_size[1]
         )
-        self._kinect = self._cameras['kinect']
-        # add gripper object detected obs?
 
-        for camera in self._cameras:
-            def depth_map(physics):
-                return physics.render(camera_id=camera,
-                                      width=img_size[0],
-                                      height=img_size[1],
-                                      depth=True
-                                      )
-            self._task_observables[f'{camera}/depth_map'] =\
-                observable.Generic(depth_map)
+        # for camera in self._cameras:
+        #     def depth_map(physics):
+        #         return physics.render(camera_id=camera,
+        #                               width=img_size[0],
+        #                               height=img_size[1],
+        #                               depth=True
+        #                               )
+        #     self._task_observables[f'{camera}/depth'] = \
+        #         observable.Generic(depth_map)
 
         workspaces.add_bbox_site(
             body=self.root_entity.mjcf_model.worldbody,
@@ -141,7 +139,7 @@ class Task(composer.Task, abc.ABC):
         for light in self.root_entity.mjcf_model.worldbody.find_all('light'):
             self._mjcf_variation.bind_attributes(
                 light,
-                pos=noises.Additive(uni(-5, .5)),
+                pos=noises.Additive(uni(-.5, .5)),
                 diffuse=uni(.3, .7),
                 specular=uni(.1, .4),
                 ambient=uni(high=.3)
@@ -163,7 +161,7 @@ class Task(composer.Task, abc.ABC):
     def initialize_episode(self, physics, random_state):
         """Init scene.
 
-        Arm and gripper init is done according to a task workspace.
+        Arm and gripper init is done according to the task workspace.
         Task specific objects should be inited after.
         """
         self._physics_variation.apply_variations(physics, random_state)
@@ -193,6 +191,10 @@ class Task(composer.Task, abc.ABC):
                         mocap_pos + constants.CTRL_LIMIT * pos,
                         mocap_quat)
 
+    def should_terminate_episode(self, physics):
+        # reward computation done twice, cache last?.
+        return self.get_reward(physics) == 1.
+
     def action_spec(self, physics):
         lim = np.full((4,), 1, dtype=np.float32)
         return specs.BoundedArray(
@@ -207,7 +209,7 @@ class Task(composer.Task, abc.ABC):
         return mocap.mocap_pos, mocap.mocap_quat
 
     def _set_mocap(self, physics, pos, quat):
-        """Mocap body pos is limited to a task bounding box."""
+        """Mocap body pos is limited to the task bounding box."""
         mocap = physics.bind(self._mocap)
         sbb = self._workspace.scene_bbox
         pos = np.clip(pos, a_min=sbb.lower, a_max=sbb.upper)

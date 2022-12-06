@@ -81,7 +81,7 @@ class Arena(Entity):
         return frame
 
     def insert_mocap(self, body: mjcf.Element):
-        mocap = _connect_mocap(body)
+        mocap = _connect_mocap(body, visual=False)
         self.mjcf_model.include_copy(mocap)
         return self.mjcf_model.find('body', 'mocap')
 

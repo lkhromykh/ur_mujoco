@@ -1,5 +1,4 @@
-"""dm_control manipulation props but with domain randomization."""
-
+"""dm_control manipulation props slightly modified for domain randomization."""
 import itertools
 
 from dm_control import composer
