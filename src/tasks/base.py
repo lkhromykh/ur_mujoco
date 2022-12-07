@@ -154,8 +154,7 @@ class Task(composer.Task, abc.ABC):
 
     def initialize_episode_mjcf(self, random_state):
         """Apply domain randomization and recompile model."""
-        if not self.__built:
-            self.__post_init__()
+        assert self.__built, "Observables and variations are not built."
         self._mjcf_variation.apply_variations(random_state)
 
     def initialize_episode(self, physics, random_state):
@@ -191,9 +190,16 @@ class Task(composer.Task, abc.ABC):
                         mocap_pos + constants.CTRL_LIMIT * pos,
                         mocap_quat)
 
+    @abc.abstractmethod
+    def get_success(self, physics):
+        """Task completed predicate."""
+
+    def get_reward(self, physics):
+        return float(self.get_success(physics))
+
     def should_terminate_episode(self, physics):
         # reward computation done twice, cache last?.
-        return self.get_reward(physics) == 1.
+        return self.get_success(physics)
 
     def action_spec(self, physics):
         lim = np.full((4,), 1, dtype=np.float32)
