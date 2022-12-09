@@ -17,6 +17,8 @@ from src.entities import Arena, Robotiq2f85, UR5e, cameras
 
 
 class RgbVariation(colors.RgbVariation):
+    """RGB variation that can ignore Alpha channel."""
+
     def __init__(self, low=0., high=1.):
         def d_fn(): return distributions.Uniform(low, high, single_sample=True)
         super().__init__(d_fn(), d_fn(), d_fn())
@@ -35,6 +37,11 @@ class RgbVariation(colors.RgbVariation):
 
 
 class BaseWorkspace(NamedTuple):
+    """
+    tcp_bbox: Tool Center Point (TCP) initialization range.
+    scene_bbox: TCP position boundaries.
+    arm_offset: distance from the arena center to the robot base.
+    """
     tcp_bbox: workspaces.BoundingBox
     scene_bbox: workspaces.BoundingBox
     arm_offset: np.ndarray = constants.ARM_OFFSET
@@ -59,6 +66,7 @@ class Task(composer.Task, abc.ABC):
 
         self._arena = Arena()
         self._arm = UR5e()
+        # We use mocap to simulate TCPPose controller.
         self._arm.mjcf_model.actuator.remove()
         self._hand = Robotiq2f85()
         self._arm.attach(self._hand)
@@ -80,8 +88,7 @@ class Task(composer.Task, abc.ABC):
         #         return physics.render(camera_id=camera,
         #                               width=img_size[0],
         #                               height=img_size[1],
-        #                               depth=True
-        #                               )
+        #                               depth=True)
         #     self._task_observables[f'{camera}/depth'] = \
         #         observable.Generic(depth_map)
 
@@ -100,7 +107,7 @@ class Task(composer.Task, abc.ABC):
 
     def __post_init__(self):
         # TODO: bad decision. One should be able to get correct obs_space
-        #   prior to any resets. So this must be called directly in __init__.
+        #   prior to any resets. So this must be called directly on __init__.
         self._build_observables()
         self._build_variations()
         self.__built = True
@@ -154,7 +161,7 @@ class Task(composer.Task, abc.ABC):
 
     def initialize_episode_mjcf(self, random_state):
         """Apply domain randomization and recompile model."""
-        assert self.__built, "Observables and variations are not built."
+        assert self.__built, "Observables and variations were not built."
         self._mjcf_variation.apply_variations(random_state)
 
     def initialize_episode(self, physics, random_state):
@@ -182,23 +189,28 @@ class Task(composer.Task, abc.ABC):
         physics.forward()
 
     def before_step(self, physics, action, random_state):
+        """Implemented action modes correspond to
+        the ur_env counterparts:
+            arm action mode: TCPPose(absolute_mode=False)
+            gripper --: Discrete()
+        TCP orientation remains fixed.
+        """
         pos, grip = action[:-1], action[-1]
         close_factor = float(grip > 0)
         self._hand.set_grasp(physics, close_factor)
-        mocap_pos, mocap_quat = self._get_mocap(physics)
-        self._set_mocap(physics,
-                        mocap_pos + constants.CTRL_LIMIT * pos,
-                        mocap_quat)
+        mocap_pos, _ = self._get_mocap(physics)
+        self._set_mocap(physics, mocap_pos + constants.CTRL_LIMIT * pos)
 
     @abc.abstractmethod
-    def get_success(self, physics):
+    def get_success(self, physics) -> bool:
         """Task completed predicate."""
 
     def get_reward(self, physics):
+        """Default sparse reward."""
         return float(self.get_success(physics))
 
     def should_terminate_episode(self, physics):
-        # reward computation done twice, cache last?.
+        # reward computation done twice, memorize last?.
         return self.get_success(physics)
 
     def action_spec(self, physics):
@@ -214,13 +226,14 @@ class Task(composer.Task, abc.ABC):
         mocap = physics.bind(self._mocap)
         return mocap.mocap_pos, mocap.mocap_quat
 
-    def _set_mocap(self, physics, pos, quat):
+    def _set_mocap(self, physics, pos, quat=None):
         """Mocap body pos is limited to the task bounding box."""
         mocap = physics.bind(self._mocap)
         sbb = self._workspace.scene_bbox
         pos = np.clip(pos, a_min=sbb.lower, a_max=sbb.upper)
         mocap.mocap_pos = pos
-        mocap.mocap_quat = quat
+        if quat is not None:
+            mocap.mocap_quat = quat
 
     @property
     def root_entity(self):

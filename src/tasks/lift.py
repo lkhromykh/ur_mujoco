@@ -9,7 +9,7 @@ from dm_control.composer.variation import distributions
 
 from src import constants
 from src.tasks import base
-from src.entities import Box
+from src.entities import props
 
 _DISTANCE_TO_LIFT = .1
 _BOX_OFFSET = np.array([-.5, .05, .1])
@@ -38,48 +38,6 @@ DEFAULT_WORKSPACE = _LiftWorkspace(
 )
 
 
-class _VertexSitesMixin:
-    """It differs from dm_control version in sites treatment:
-    existing sites will alternate instead of creating new every time."""
-
-    def add_vertex_sites(self, box_geom_or_site):
-        """Add sites corresponding to the vertices of a box geom or site."""
-        offsets = (
-            (-half_length, half_length)
-            for half_length in box_geom_or_site.size
-        )
-        site_positions = np.vstack(itertools.product(*offsets))
-        if box_geom_or_site.pos is not None:
-            site_positions += box_geom_or_site.pos
-        self._vertices = []
-        for i, pos in enumerate(site_positions):
-            name = 'vertex_' + str(i)
-            site = box_geom_or_site.parent.find('site', name)
-            if site is None:
-                site = box_geom_or_site.parent.add(
-                    'site', name=name,
-                    pos=pos, type='sphere', size=[0.002],
-                    rgba=constants.RED, group=constants.TASK_SITE_GROUP)
-            else:
-                site.pos = pos
-            self._vertices.append(site)
-
-    @property
-    def vertices(self):
-        return self._vertices
-
-
-class BoxWithVertexSites(Box, _VertexSitesMixin):
-    """Subclass of `Box` with sites marking the vertices of the box geom."""
-
-    def _build(self, *args, **kwargs):
-        super()._build(*args, **kwargs)
-
-    def initialize_episode_mjcf(self, random_state):
-        self.touch_site.size = 1.05 * self.geom.size
-        self.add_vertex_sites(self.geom)
-
-
 class Lift(base.Task):
     def __init__(self,
                  workspace: _LiftWorkspace = DEFAULT_WORKSPACE,
@@ -88,7 +46,8 @@ class Lift(base.Task):
                  target_height: float = _DISTANCE_TO_LIFT
                  ):
         super().__init__(workspace, control_timestep, img_size)
-        self._prop = BoxWithVertexSites(half_lengths=_BOX_SIZE, mass=_BOX_MASS)
+        self._prop = props.BoxWithVertexSites(
+            half_lengths=_BOX_SIZE, mass=_BOX_MASS)
         self._prop.geom.rgba = (1, 0, 0, 1)
         self._arena.add_free_entity(self._prop)
         self._target_height = target_height

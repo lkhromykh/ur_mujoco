@@ -1,6 +1,8 @@
 import os
 
 from dm_control import mjcf
+from dm_control import composer
+from dm_control.composer.observation import observable
 from dm_control.entities.manipulators.base import RobotArm
 
 _UR5E_XML_PATH = os.path.join(
@@ -21,6 +23,9 @@ class UR5e(RobotArm):
         self._actuators = self.mjcf_model.find_all('actuator')
         self._bodies = self.mjcf_model.find_all('body')
 
+    def _build_observables(self):
+        return JointsObservables(self)
+
     @property
     def joints(self):
         return self._joints
@@ -40,3 +45,15 @@ class UR5e(RobotArm):
     @property
     def mjcf_model(self):
         return self._mjcf_model
+
+
+class JointsObservables(composer.Observables):
+    """Observables common to all robot arms."""
+
+    @composer.observable
+    def joints_pos(self):
+        return observable.MJCFFeature('qpos', self._entity.joints)
+
+    #@composer.observable
+    def joints_vel(self):
+        return observable.MJCFFeature('qvel', self._entity.joints)

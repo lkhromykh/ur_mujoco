@@ -1,22 +1,23 @@
-# TODO: prune duplicates.
 from typing import Tuple, NamedTuple
 
 import numpy as np
 from dm_control.composer import initializers
-from dm_control.rl.control import PhysicsError
 from dm_control.manipulation.shared import workspaces
 from dm_control.composer.observation import observable
 from dm_control.composer.variation import distributions
+from dm_control.rl.control import PhysicsError
+from dm_control.composer.environment import EpisodeInitializationError
 
 from src import constants
 from src.tasks import base
-from src.tasks import lift
+from src.entities.props import primitive
 
+_BOX_MASS = .005
 _BOX_SIZE = (.05, .03, .02)
 _BOX_OFFSET = np.array([-.5, .05, .1])
-_BOX_MASS = .005
 
-_THRESHOLD = .008
+_DISTANCE_THRESHOLD = .01
+_SCENE_SIZE = .15
 
 
 class FetchWorkspace(NamedTuple):
@@ -26,53 +27,72 @@ class FetchWorkspace(NamedTuple):
     prop_bbox: workspaces.BoundingBox
 
 
-DEFAULT_WORKSPACE = FetchWorkspace(
+_lower = lambda h=0: np.array([-_SCENE_SIZE, -_SCENE_SIZE, h])
+_upper = lambda h=0: np.array([_SCENE_SIZE, _SCENE_SIZE, h])
+
+_DEFAULT_WORKSPACE = FetchWorkspace(
     tcp_bbox=workspaces.BoundingBox(
-        lower=_BOX_OFFSET + np.array([-.15, -.15, .1]),
-        upper=_BOX_OFFSET + np.array([.15, .15, .3])
+        lower=_BOX_OFFSET + _lower(),
+        upper=_BOX_OFFSET + _upper(.35),
     ),
-    scene_bbox=base.DEFAULT_SCENE_BBOX,
+    scene_bbox=workspaces.BoundingBox(
+        lower=_BOX_OFFSET + _lower(-_BOX_OFFSET[-1]),
+        upper=_BOX_OFFSET + _upper(.35),
+    ),
     prop_bbox=workspaces.BoundingBox(
-        lower=_BOX_OFFSET + np.array([-.15, -.15, 0.]),
-        upper=_BOX_OFFSET + np.array([.15, .15, 0.]),
+        lower=_BOX_OFFSET + _lower(),
+        upper=_BOX_OFFSET + _upper(),
     ),
     arm_offset=constants.ARM_OFFSET
 )
 
 
+class FetchProp(primitive.BoxWithVertexSites):
+    """No velocity sensors and touch sensor w/ a cutoff."""
+
+    def _build(self, half_lengths=None, mass=None, name='box'):
+        super()._build(half_lengths, mass, name)
+        self._touch = self._mjcf_root.sensor.add(
+            'touch', site=self._touch_site, cutoff=5.)
+
+    def _build_observables(self):
+        return primitive.StaticPrimitiveObservables(self)
+
+
 class FetchPick(base.Task):
     """Closely resembles Lift task but require
-    to fetch box in a precise position, not just height level."""
+    to fetch box in a precise position, not just surpass height threshold."""
+
     def __init__(self,
-                 workspace: FetchWorkspace = DEFAULT_WORKSPACE,
+                 workspace: FetchWorkspace = _DEFAULT_WORKSPACE,
                  control_timestep: float = constants.CONTROL_TIMESTEP,
                  img_size: Tuple[int, int] = (84, 84),
-                 threshold: float = _THRESHOLD,
+                 distance_threshold: float = _DISTANCE_THRESHOLD,
                  ):
         super().__init__(workspace, control_timestep, img_size)
-        self._prop = lift.BoxWithVertexSites(
+        self._prop = FetchProp(
             half_lengths=_BOX_SIZE, mass=_BOX_MASS)
         self._prop.geom.rgba = (1, 0, 0, 1)
         self._arena.add_free_entity(self._prop)
-        self._threshold = threshold
+        self._threshold = distance_threshold
 
         tbb = workspace.tcp_bbox
         self._tcp_center = (tbb.lower + tbb.upper) / 2
-
+        self._tcp_initializer = initializers.ToolCenterPointInitializer(
+            self._hand, self._arm,
+            position=self._tcp_center
+        )
         self._prop_placer = initializers.PropPlacer(
             props=[self._prop],
             position=distributions.Uniform(*workspace.prop_bbox),
             quaternion=workspaces.uniform_z_rotation,
-            ignore_collisions=True,
-            max_attempts_per_prop=60,
-            max_settle_physics_attempts=20,
-            max_settle_physics_time=5,
-            settle_physics=True
+            ignore_collisions=False,
+            settle_physics=True,
         )
 
         self._target_site = workspaces.add_target_site(
             body=self.root_entity.mjcf_model.worldbody,
-            radius=threshold,
+            radius=distance_threshold,
             visible=False,
             rgba=constants.RED,
             name='target_site'
@@ -116,7 +136,8 @@ class FetchPick(base.Task):
             if not self.eval_flag and grounded_goal:
                 self._initialize_on_table(physics, random_state)
             else:
-                self._initialize_midair(physics, random_state)
+                target_pos = random_state.uniform(*self._workspace.tcp_bbox)
+                self._initialize_midair(physics, random_state, target_pos)
 
             self._prepare_goal(physics, random_state)
             physics.bind(self._target_site).pos = self._goal_pos
@@ -130,14 +151,15 @@ class FetchPick(base.Task):
             # Resample successful init.
             if self.get_success(physics):
                 self.initialize_episode(physics, random_state)
-            # Resample invalid prop placement
+            # Resample invalid due to physics_settle prop placement.
             pos, _ = self._prop.get_pose(physics)
             low, high = self._workspace.prop_bbox
             is_invalid = np.logical_or(pos < low, pos > high)
             if np.any(is_invalid[:-1]):
                 self.initialize_episode(physics, random_state)
-        except PhysicsError:
-            self.initialize_episode(physics, random_state)
+        except (PhysicsError, RuntimeError) as exp:
+            # composer.Environment can handle errors on init.
+            raise EpisodeInitializationError(exp) from exp
 
     def get_success(self, physics):
         """Is the prop properly placed?"""
@@ -164,12 +186,12 @@ class FetchPick(base.Task):
             physics.step()
 
     def _initialize_on_table(self, physics, random_state):
-        """Prop placed on the table"""
+        """Prop placed on the table."""
         super().initialize_episode(physics, random_state)
         self._prop_placer(physics, random_state)
 
     def _prepare_goal(self, physics, random_state):
-        """Update and add goals to the observation dict."""
+        """Snap current observations as a desired episode goal."""
         img = self.task_observables['kinect/image']
         self._goal_img = img(physics, random_state).copy()
         pos, _ = self._prop.get_pose(physics)

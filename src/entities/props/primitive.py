@@ -1,4 +1,5 @@
-"""dm_control manipulation props slightly modified for domain randomization."""
+"""Slightly modified dm_control manipulation props."""
+# github.com/deepmind/dm_control/blob/main/dm_control/entities/props/primitive.py
 import itertools
 
 from dm_control import composer
@@ -130,6 +131,22 @@ class PrimitiveObservables(composer.Observables,
         return observable.MJCFFeature('sensordata', self._entity.touch)
 
 
+class StaticPrimitiveObservables(composer.Observables):
+    """Primitive w/o velocity sensors output."""
+
+    @define.observable
+    def position(self):
+        return observable.MJCFFeature('sensordata', self._entity.position)
+
+    @define.observable
+    def orientation(self):
+        return observable.MJCFFeature('sensordata', self._entity.orientation)
+
+    @define.observable
+    def touch(self):
+        return observable.MJCFFeature('sensordata', self._entity.touch)
+
+
 class Sphere(Primitive):
     """A class representing a sphere prop."""
 
@@ -208,3 +225,42 @@ class Capsule(Primitive):
                                     size=[radius, half_length],
                                     mass=mass,
                                     name=name)
+
+
+class _VertexSitesMixin:
+    """It differs from dm_control version in sites treatment:
+    existing sites will alternate instead of creating new every time."""
+
+    def add_vertex_sites(self, box_geom_or_site):
+        """Add sites corresponding to the vertices of a box geom or site."""
+        offsets = (
+            (-half_length, half_length)
+            for half_length in box_geom_or_site.size
+        )
+        site_positions = np.vstack(itertools.product(*offsets))
+        if box_geom_or_site.pos is not None:
+            site_positions += box_geom_or_site.pos
+        self._vertices = []
+        for i, pos in enumerate(site_positions):
+            name = 'vertex_' + str(i)
+            site = box_geom_or_site.parent.find('site', name)
+            if site is None:
+                site = box_geom_or_site.parent.add(
+                    'site', name=name,
+                    pos=pos, type='sphere', size=[0.002],
+                    rgba=constants.RED, group=constants.TASK_SITE_GROUP)
+            else:
+                site.pos = pos
+            self._vertices.append(site)
+
+    @property
+    def vertices(self):
+        return self._vertices
+
+
+class BoxWithVertexSites(Box, _VertexSitesMixin):
+    """Subclass of `Box` with sites marking the vertices of the box geom."""
+
+    def initialize_episode_mjcf(self, random_state):
+        self.touch_site.size = 1.05 * self.geom.size
+        self.add_vertex_sites(self.geom)
