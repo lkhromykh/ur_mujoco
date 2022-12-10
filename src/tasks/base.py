@@ -213,6 +213,11 @@ class Task(composer.Task, abc.ABC):
         # reward computation done twice, memorize last?.
         return self.get_success(physics)
 
+    def compute_reward(self, achieved_goal, desired_goal):
+        """If task will be solved by HER, this expose reward function
+        for hindsight relabeling (cf. 1802.09464)."""
+        raise NotImplementedError
+
     def action_spec(self, physics):
         lim = np.full((4,), 1, dtype=np.float32)
         return specs.BoundedArray(

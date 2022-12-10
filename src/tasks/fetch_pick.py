@@ -197,8 +197,8 @@ class FetchPick(base.Task):
         pos, _ = self._prop.get_pose(physics)
         self._goal_pos = pos.copy()
 
-    def compute_reward(self, achieved_state, desired_state):
-        ach_pos = achieved_state["box/position"]
-        des_pos = desired_state["box/position"]
+    def compute_reward(self, achieved_goal, desired_goal):
+        ach_pos = achieved_goal["box/position"]
+        des_pos = desired_goal["box/position"]
         dist = np.linalg.norm(ach_pos - des_pos)
         return dist < self._threshold
