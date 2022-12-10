@@ -16,7 +16,7 @@ _BOX_MASS = .005
 _BOX_SIZE = (.05, .03, .02)
 _BOX_OFFSET = np.array([-.5, .05, .1])
 
-_DISTANCE_THRESHOLD = .01
+_DISTANCE_THRESHOLD = .02
 _SCENE_SIZE = .15
 
 
@@ -196,3 +196,9 @@ class FetchPick(base.Task):
         self._goal_img = img(physics, random_state).copy()
         pos, _ = self._prop.get_pose(physics)
         self._goal_pos = pos.copy()
+
+    def compute_reward(self, achieved_state, desired_state):
+        ach_pos = achieved_state["box/position"]
+        des_pos = desired_state["box/position"]
+        dist = np.linalg.norm(ach_pos - des_pos)
+        return dist < self._threshold
