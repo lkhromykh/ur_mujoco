@@ -16,7 +16,7 @@ _BOX_MASS = .1
 _BOX_SIZE = (.04, .03, .02)
 _BOX_OFFSET = np.array([-.5, .05, .1])
 
-_DISTANCE_THRESHOLD = .02
+_DISTANCE_THRESHOLD = .05
 _SCENE_SIZE = .15
 
 
@@ -112,6 +112,13 @@ class FetchPick(base.Task):
         self._task_observables['goal_pos'] = \
             observable.Generic(lambda _: self._goal_pos)
 
+        def to_prop(physics):
+            pos, _ = self._get_mocap(physics)
+            return self._prop.global_vector_to_local_frame(physics, pos)
+
+        self._task_observables['relative_distance'] = \
+            observable.Generic(to_prop)
+
         self.__post_init__()
 
     def _build_variations(self):
@@ -131,12 +138,9 @@ class FetchPick(base.Task):
     #     del random_state
 
     def initialize_episode(self, physics, random_state):
-        # Sample grounded goal: goal is on the table.
-        # And sample midair init: prop is grasped by the gripper.
-        # Eval should never be grounded nor midair.
         try:
-            grounded_goal, midair_init = random_state.choice([True, False], 2)
-            if not self.eval_flag and grounded_goal:
+            # Goal on the table or in the air.
+            if not self.eval_flag and random_state.choice([True, False]):
                 self._initialize_on_table(physics, random_state)
             else:
                 target_pos = random_state.uniform(*self._workspace.tcp_bbox)
@@ -145,11 +149,7 @@ class FetchPick(base.Task):
             self._prepare_goal(physics, random_state)
             physics.bind(self._target_site).pos = self._goal_pos
 
-            if not self.eval_flag and midair_init:
-                self._initialize_midair(physics, random_state,
-                                        fixed_pos=self._tcp_center)
-            else:
-                self._initialize_on_table(physics, random_state)
+            self._initialize_on_table(physics, random_state)
 
             # Resample successful init.
             if self.get_success(physics):
