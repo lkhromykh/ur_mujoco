@@ -12,8 +12,8 @@ from src import constants
 from src.tasks import base
 from src.entities.props import primitive
 
-_BOX_MASS = .005
-_BOX_SIZE = (.05, .03, .02)
+_BOX_MASS = .1
+_BOX_SIZE = (.04, .03, .02)
 _BOX_OFFSET = np.array([-.5, .05, .1])
 
 _DISTANCE_THRESHOLD = .02
@@ -120,12 +120,15 @@ class FetchPick(base.Task):
             self._prop.geom,
             rgba=base.RgbVariation(),
             size=distributions.Uniform(.01, .035),
-            mass=distributions.Uniform(.05, .3)
+            mass=distributions.Uniform(.1, 2.)
         )
 
     def _build_observables(self):
         super()._build_observables()
         self._prop.observables.enable_all()
+
+    # def initialize_episode_mjcf(self, random_state):
+    #     del random_state
 
     def initialize_episode(self, physics, random_state):
         # Sample grounded goal: goal is on the table.
