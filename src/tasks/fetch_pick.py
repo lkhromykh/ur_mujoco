@@ -13,10 +13,10 @@ from src.tasks import base
 from src.entities.props import primitive
 
 _BOX_MASS = .1
-_BOX_SIZE = (.04, .03, .02)
+_BOX_SIZE = (.1, .06, .03)
 _BOX_OFFSET = np.array([-.5, .05, .1])
 
-_DISTANCE_THRESHOLD = .05
+_DISTANCE_THRESHOLD = .04
 _SCENE_SIZE = .15
 
 
@@ -49,11 +49,6 @@ _DEFAULT_WORKSPACE = FetchWorkspace(
 
 class FetchProp(primitive.BoxWithVertexSites):
     """No velocity sensors and touch sensor w/ a cutoff."""
-
-    def _build(self, half_lengths=None, mass=None, name='box'):
-        super()._build(half_lengths, mass, name)
-        self._touch = self._mjcf_root.sensor.add(
-            'touch', site=self._touch_site, cutoff=5.)
 
     def _build_observables(self):
         return primitive.StaticPrimitiveObservables(self)
@@ -125,9 +120,9 @@ class FetchPick(base.Task):
         super()._build_variations()
         self._mjcf_variation.bind_attributes(
             self._prop.geom,
-            rgba=base.RgbVariation(),
-            size=distributions.Uniform(.01, .035),
-            mass=distributions.Uniform(.1, 2.)
+            # rgba=base.RgbVariation(),
+            size=distributions.Uniform(.2, 1.),
+            mass=distributions.Uniform(.1, 1.)
         )
 
     def _build_observables(self):

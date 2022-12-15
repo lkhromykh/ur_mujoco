@@ -156,7 +156,7 @@ class Task(composer.Task, abc.ABC):
                 cam,
                 pos=noises.Additive(uni(-.1, .1)),
                 xyaxes=noises.Multiplicative(uni(.7, 1.3)),
-                fovy=noises.Additive(uni(-10, 10)),
+                fovy=noises.Additive(uni(-5, 15)),
             )
 
     def initialize_episode_mjcf(self, random_state):

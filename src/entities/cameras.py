@@ -45,9 +45,9 @@ RIGHT_CLOSE = CameraSpec(
 
 KINECT = CameraSpec(
     name='kinect',
-    pos=(-1.1, .2, .54),
+    pos=(-1.1, .3, .6),
     xyaxes=(-.2, -.9, 0, .3, 0, .8),
-    fovy=75
+    fovy=65
 )
 
 

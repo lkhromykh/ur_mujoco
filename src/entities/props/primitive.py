@@ -11,6 +11,7 @@ import numpy as np
 from src import constants
 
 _DEFAULT_HALF_LENGTHS = [0.05, 0.1, 0.15]
+_MAX_TOUCH = 100.
 
 
 class Primitive(composer.Entity):
@@ -39,7 +40,7 @@ class Primitive(composer.Entity):
             group=constants.SENSOR_SITE_GROUP)
 
         self._touch = self._mjcf_root.sensor.add(
-            'touch', site=self._touch_site)
+            'touch', site=self._touch_site, cutoff=_MAX_TOUCH)
 
         self._position = self._mjcf_root.sensor.add(
             'framepos', name='position', objtype='geom', objname=self.geom)
@@ -128,7 +129,9 @@ class PrimitiveObservables(composer.Observables,
 
     @define.observable
     def touch(self):
-        return observable.MJCFFeature('sensordata', self._entity.touch)
+        obs = observable.MJCFFeature('sensordata', self._entity.touch)
+        obs.corruptor = lambda touch, random_state: touch / _MAX_TOUCH
+        return obs
 
 
 class StaticPrimitiveObservables(composer.Observables):
@@ -144,7 +147,9 @@ class StaticPrimitiveObservables(composer.Observables):
 
     @define.observable
     def touch(self):
-        return observable.MJCFFeature('sensordata', self._entity.touch)
+        obs = observable.MJCFFeature('sensordata', self._entity.touch)
+        obs.corruptor = lambda touch, random_state: touch / _MAX_TOUCH
+        return obs
 
 
 class Sphere(Primitive):
