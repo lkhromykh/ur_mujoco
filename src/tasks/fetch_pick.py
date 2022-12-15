@@ -13,7 +13,7 @@ from src.tasks import base
 from src.entities.props import primitive
 
 _BOX_MASS = .1
-_BOX_SIZE = (.1, .06, .03)
+_BOX_SIZE = (.5, .03, .015)
 _BOX_OFFSET = np.array([-.5, .05, .1])
 
 _DISTANCE_THRESHOLD = .04
@@ -121,7 +121,7 @@ class FetchPick(base.Task):
         self._mjcf_variation.bind_attributes(
             self._prop.geom,
             # rgba=base.RgbVariation(),
-            size=distributions.Uniform(.2, 1.),
+            size=distributions.Uniform(.1, .5),
             mass=distributions.Uniform(.1, 1.)
         )
 
