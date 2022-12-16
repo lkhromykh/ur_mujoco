@@ -1,4 +1,5 @@
 from typing import Tuple, NamedTuple
+from collections import OrderedDict
 
 import numpy as np
 from dm_control.composer import initializers
@@ -13,11 +14,12 @@ from src.tasks import base
 from src.entities.props import primitive
 
 _BOX_MASS = .1
-_BOX_SIZE = (.05, .03, .015)
+_BOX_SIZE = (.04, .03, .015)
 _BOX_OFFSET = np.array([-.5, .05, .1])
 
 _DISTANCE_THRESHOLD = .04
 _SCENE_SIZE = .15
+_DEPTH_THRESH = 2.
 
 
 class FetchWorkspace(NamedTuple):
@@ -98,14 +100,29 @@ class FetchPick(base.Task):
             rgba=constants.BLUE, name='prop_spawn_area')
 
         # Duct tape.
+        self._task_observables = OrderedDict()
         self.eval_flag = False
         # Spoofing observables so they are included on _build.
-        self._goal_img = np.zeros(img_size+(3,), np.uint8)
         self._goal_pos = np.zeros((3,), np.float64)
-        self._task_observables['goal_image'] = \
-            observable.Generic(lambda _: self._goal_img)
         self._task_observables['goal_pos'] = \
             observable.Generic(lambda _: self._goal_pos)
+
+        w, h = img_size
+        self._goal_rgbd = np.zeros(img_size + (4,), np.uint8)
+
+        def rgbd(physics):
+            img = physics.render(width=w, height=h, camera_id="kinect")
+            depth = physics.render(
+                width=w, height=h, camera_id="kinect", depth=True)
+            # bad practice lower.
+            depth += np.random.normal(loc=0, scale=.01, size=depth.shape)
+            depth = np.clip(depth, a_min=0, a_max=_DEPTH_THRESH)
+            depth = np.uint8(255 * depth / _DEPTH_THRESH)
+            return np.concatenate([img, depth[..., np.newaxis]], -1)
+
+        self._task_observables["rgbd"] = observable.Generic(rgbd)
+        self._task_observables["goal_rgbd"] = \
+            observable.Generic(lambda _: self._goal_rgbd)
 
         def to_prop(physics):
             pos, _ = self._get_mocap(physics)
@@ -121,7 +138,7 @@ class FetchPick(base.Task):
         self._mjcf_variation.bind_attributes(
             self._prop.geom,
             # rgba=base.RgbVariation(),
-            size=distributions.Uniform(.01, .05),
+            size=distributions.Uniform(.01, .04),
             mass=distributions.Uniform(.1, 1.)
         )
 
@@ -190,8 +207,8 @@ class FetchPick(base.Task):
 
     def _prepare_goal(self, physics, random_state):
         """Snap current observations as a desired episode goal."""
-        img = self.task_observables['kinect/image']
-        self._goal_img = img(physics, random_state).copy()
+        rgbd = self.task_observables["rgbd"]
+        self._goal_rgbd = rgbd(physics, random_state).copy()
         pos, _ = self._prop.get_pose(physics)
         self._goal_pos = pos.copy()
 
