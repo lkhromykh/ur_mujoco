@@ -17,9 +17,9 @@ _BOX_MASS = .1
 _BOX_SIZE = (.04, .03, .015)
 _BOX_OFFSET = np.array([-.5, .05, .1])
 
-_DISTANCE_THRESHOLD = .04
+_DISTANCE_THRESHOLD = .05
 _SCENE_SIZE = .15
-_DEPTH_THRESH = 2.
+_DEPTH_THRESH = 1.5
 
 
 class FetchWorkspace(NamedTuple):
@@ -161,7 +161,11 @@ class FetchPick(base.Task):
             self._prepare_goal(physics, random_state)
             physics.bind(self._target_site).pos = self._goal_pos
 
-            self._initialize_on_table(physics, random_state)
+            if not self.eval_flag and random_state.choice([True, False]):
+                self._initialize_midair(
+                    physics, random_state, fixed_pos=self._tcp_center)
+            else:
+                self._initialize_on_table(physics, random_state)
 
             # Resample successful init.
             if self.get_success(physics):
@@ -172,7 +176,7 @@ class FetchPick(base.Task):
             is_invalid = np.logical_or(pos < low, pos > high)
             if np.any(is_invalid[:-1]):
                 self.initialize_episode(physics, random_state)
-        except (PhysicsError, RuntimeError) as exp:
+        except (PhysicsError, RuntimeError, AttributeError) as exp:
             # composer.Environment can handle errors on init.
             raise EpisodeInitializationError(exp) from exp
 

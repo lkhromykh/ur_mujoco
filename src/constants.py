@@ -1,4 +1,6 @@
 import numpy as np
+from dm_control.composer.constants import SENSOR_SITES_GROUP
+from dm_control.manipulation.shared.constants import TASK_SITE_GROUP
 
 # Predefined RGBA values
 RED = (1., 0., 0., 0.3)
@@ -8,8 +10,6 @@ CYAN = (0., 1., 1., 0.3)
 MAGENTA = (1., 0., 1., 0.3)
 YELLOW = (1., 1., 0., 0.3)
 
-TASK_SITE_GROUP = 3
-SENSOR_SITE_GROUP = 4
 MOCAP_SITE_GROUP = 5
 
 CONTROL_TIMESTEP = .5

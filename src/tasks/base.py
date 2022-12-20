@@ -113,7 +113,7 @@ class Task(composer.Task, abc.ABC):
         self.__built = True
 
     def _build_observables(self):
-        """Decide what will agent observe."""
+        """Decide what will an agent observe."""
         self._arena.observables.enable_all()
         self._arm.observables.enable_all()
         self._hand.observables.enable_all()
@@ -168,7 +168,7 @@ class Task(composer.Task, abc.ABC):
         """Init scene.
 
         Arm and gripper init is done according to the task workspace.
-        Task specific objects should be inited after.
+        Task specific objects may be inited after.
         """
         self._physics_variation.apply_variations(physics, random_state)
         weld = physics.bind(self._weld)
@@ -214,7 +214,7 @@ class Task(composer.Task, abc.ABC):
         return self.get_success(physics)
 
     def compute_reward(self, achieved_goal, desired_goal):
-        """If task will be solved by HER, this expose reward function
+        """If task will be solved by HER, this exposes reward function
         for hindsight relabeling (cf. 1802.09464)."""
         raise NotImplementedError
 
