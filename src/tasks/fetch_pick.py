@@ -17,9 +17,9 @@ _BOX_MASS = .1
 _BOX_SIZE = (.04, .03, .015)
 _BOX_OFFSET = np.array([-.5, .05, .1])
 
-_DISTANCE_THRESHOLD = .05
+_DISTANCE_THRESHOLD = .03
 _SCENE_SIZE = .15
-_DEPTH_THRESH = 1.5
+_DEPTH_THRESH = 1.3
 
 
 class FetchWorkspace(NamedTuple):
@@ -63,7 +63,7 @@ class FetchPick(base.Task):
     def __init__(self,
                  workspace: FetchWorkspace = _DEFAULT_WORKSPACE,
                  control_timestep: float = constants.CONTROL_TIMESTEP,
-                 img_size: Tuple[int, int] = (84, 84),
+                 img_size: Tuple[int, int] = (100, 100),
                  distance_threshold: float = _DISTANCE_THRESHOLD,
                  ):
         super().__init__(workspace, control_timestep, img_size)
@@ -85,6 +85,7 @@ class FetchPick(base.Task):
             quaternion=workspaces.uniform_z_rotation,
             ignore_collisions=False,
             settle_physics=True,
+            min_settle_physics_time=1e-2
         )
 
         self._target_site = workspaces.add_target_site(
@@ -115,7 +116,7 @@ class FetchPick(base.Task):
             depth = physics.render(
                 width=w, height=h, camera_id="kinect", depth=True)
             # bad practice lower.
-            depth += np.random.normal(loc=0, scale=.01, size=depth.shape)
+            depth += np.random.normal(loc=0, scale=.005, size=depth.shape)
             depth = np.clip(depth, a_min=0, a_max=_DEPTH_THRESH)
             depth = np.uint8(255 * depth / _DEPTH_THRESH)
             return np.concatenate([img, depth[..., np.newaxis]], -1)

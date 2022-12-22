@@ -37,7 +37,7 @@ class Primitive(composer.Entity):
             'site', type=geom_type, name='touch_sensor',
             size=self._geom.size * 1.05,
             rgba=[1, 1, 1, 0.1],  # touch sensor site is almost transparent
-            group=constants.SENSOR_SITE_GROUP)
+            group=constants.SENSOR_SITES_GROUP)
 
         self._touch = self._mjcf_root.sensor.add(
             'touch', site=self._touch_site, cutoff=_MAX_TOUCH)

@@ -106,7 +106,7 @@ class Task(composer.Task, abc.ABC):
         self.__built = False
 
     def __post_init__(self):
-        # TODO: bad decision. One should be able to get correct obs_space
+        # TODO: bad decision. One should be able to obtain correct obs_space
         #   prior to any resets. So this must be called directly on __init__.
         self._build_observables()
         self._build_variations()
@@ -134,7 +134,10 @@ class Task(composer.Task, abc.ABC):
             self._hand.tool_center_point,
             pos=noises.Multiplicative(uni(.9, 1.1))
         )
+        grip_mat = self._hand.mjcf_model.find('material', 'black')
         for mat in self.root_entity.mjcf_model.asset.find_all('material'):
+            if mat == grip_mat:  # Preserve gripper color.
+                continue
             self._mjcf_variation.bind_attributes(
                 mat,
                 rgba=RgbVariation(),
@@ -155,8 +158,8 @@ class Task(composer.Task, abc.ABC):
             self._mjcf_variation.bind_attributes(
                 cam,
                 pos=noises.Additive(uni(-.1, .1)),
-                xyaxes=noises.Multiplicative(uni(.7, 1.3)),
-                fovy=noises.Additive(uni(-5, 15)),
+                xyaxes=noises.Multiplicative(uni(.8, 1.2)),
+                fovy=noises.Additive(uni(-5, 10)),
             )
 
     def initialize_episode_mjcf(self, random_state):
@@ -214,7 +217,7 @@ class Task(composer.Task, abc.ABC):
         return self.get_success(physics)
 
     def compute_reward(self, achieved_goal, desired_goal):
-        """If task will be solved by HER, this exposes reward function
+        """If task will be solved with HER, this exposes reward function
         for hindsight relabeling (cf. 1802.09464)."""
         raise NotImplementedError
 
