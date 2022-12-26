@@ -158,8 +158,8 @@ class Task(composer.Task, abc.ABC):
             self._mjcf_variation.bind_attributes(
                 cam,
                 pos=noises.Additive(uni(-.1, .1)),
-                xyaxes=noises.Multiplicative(uni(.8, 1.2)),
-                fovy=noises.Additive(uni(-5, 10)),
+                xyaxes=noises.Multiplicative(uni(.9, 1.1)),
+                fovy=noises.Additive(uni(-5, 5)),
             )
 
     def initialize_episode_mjcf(self, random_state):

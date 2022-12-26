@@ -17,9 +17,9 @@ _BOX_MASS = .1
 _BOX_SIZE = (.04, .03, .015)
 _BOX_OFFSET = np.array([-.5, .05, .1])
 
-_DISTANCE_THRESHOLD = .03
-_SCENE_SIZE = .15
-_DEPTH_THRESH = 1.3
+_DISTANCE_THRESHOLD = .04
+_SCENE_SIZE = .1
+_DEPTH_THRESH = 1.5
 
 
 class FetchWorkspace(NamedTuple):
@@ -35,11 +35,11 @@ _upper = lambda h=0: np.array([_SCENE_SIZE, _SCENE_SIZE, h])
 _DEFAULT_WORKSPACE = FetchWorkspace(
     tcp_bbox=workspaces.BoundingBox(
         lower=_BOX_OFFSET + _lower(),
-        upper=_BOX_OFFSET + _upper(.35),
+        upper=_BOX_OFFSET + _upper(.2),
     ),
     scene_bbox=workspaces.BoundingBox(
         lower=_BOX_OFFSET + _lower(-_BOX_OFFSET[-1]),
-        upper=_BOX_OFFSET + _upper(.35),
+        upper=_BOX_OFFSET + _upper(.2),
     ),
     prop_bbox=workspaces.BoundingBox(
         lower=_BOX_OFFSET + _lower(),
@@ -63,7 +63,7 @@ class FetchPick(base.Task):
     def __init__(self,
                  workspace: FetchWorkspace = _DEFAULT_WORKSPACE,
                  control_timestep: float = constants.CONTROL_TIMESTEP,
-                 img_size: Tuple[int, int] = (100, 100),
+                 img_size: Tuple[int, int] = (84, 84),
                  distance_threshold: float = _DISTANCE_THRESHOLD,
                  ):
         super().__init__(workspace, control_timestep, img_size)
@@ -82,7 +82,7 @@ class FetchPick(base.Task):
         self._prop_placer = initializers.PropPlacer(
             props=[self._prop],
             position=distributions.Uniform(*workspace.prop_bbox),
-            quaternion=workspaces.uniform_z_rotation,
+            # quaternion=workspaces.uniform_z_rotation,
             ignore_collisions=False,
             settle_physics=True,
             min_settle_physics_time=1e-2
@@ -139,8 +139,8 @@ class FetchPick(base.Task):
         self._mjcf_variation.bind_attributes(
             self._prop.geom,
             # rgba=base.RgbVariation(),
-            size=distributions.Uniform(.01, .04),
-            mass=distributions.Uniform(.1, 1.)
+            size=distributions.Uniform(.01, .035),
+            mass=distributions.Uniform(.1, .5)
         )
 
     def _build_observables(self):
@@ -167,6 +167,7 @@ class FetchPick(base.Task):
                     physics, random_state, fixed_pos=self._tcp_center)
             else:
                 self._initialize_on_table(physics, random_state)
+            physics.step(nstep=5)
 
             # Resample successful init.
             if self.get_success(physics):
