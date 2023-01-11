@@ -1,4 +1,4 @@
-"""Most of the code can be found in the dm_control repo."""
+"""Most of the code can be found in dm_control repo."""
 from dm_control.composer import Environment as Environment
 
 from src.tasks.fetch_pick import FetchPick

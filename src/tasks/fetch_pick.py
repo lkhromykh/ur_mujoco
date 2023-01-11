@@ -63,7 +63,7 @@ class FetchPick(base.Task):
     def __init__(self,
                  workspace: FetchWorkspace = _DEFAULT_WORKSPACE,
                  control_timestep: float = constants.CONTROL_TIMESTEP,
-                 img_size: Tuple[int, int] = (100, 100),
+                 img_size: Tuple[int, int] = (84, 84),
                  distance_threshold: float = _DISTANCE_THRESHOLD,
                  ):
         super().__init__(workspace, control_timestep, img_size)
@@ -139,7 +139,7 @@ class FetchPick(base.Task):
         self._mjcf_variation.bind_attributes(
             self._prop.geom,
             # rgba=base.RgbVariation(),
-            size=distributions.Uniform(.01, .03),
+            size=distributions.Uniform(.01, .035),
             mass=distributions.Uniform(.1, .5)
         )
 
@@ -147,14 +147,13 @@ class FetchPick(base.Task):
         super()._build_observables()
         self._prop.observables.enable_all()
 
-    def initialize_episode_mjcf(self, random_state):
-        del random_state
+    # def initialize_episode_mjcf(self, random_state):
+    #     del random_state
 
     def initialize_episode(self, physics, random_state):
         try:
             # Goal on the table or in the air.
-            grounded_goal = random_state.choice([True, False], p=[.1, .9])
-            if not self.eval_flag and grounded_goal:
+            if not self.eval_flag and random_state.choice([True, False]):
                 self._initialize_on_table(physics, random_state)
             else:
                 target_pos = random_state.uniform(*self._workspace.tcp_bbox)
@@ -163,14 +162,12 @@ class FetchPick(base.Task):
             self._prepare_goal(physics, random_state)
             physics.bind(self._target_site).pos = self._goal_pos
 
-            # Begin from the grasped state (fixed): this can ease exploration.
-            midair_start = random_state.choice([True, False], p=[.1, .9])
-            if not self.eval_flag and midair_start:
+            if not self.eval_flag and random_state.choice([True, False]):
                 self._initialize_midair(
                     physics, random_state, fixed_pos=self._tcp_center)
             else:
                 self._initialize_on_table(physics, random_state)
-            physics.step(100)
+            physics.step(nstep=5)
 
             # Resample successful init.
             if self.get_success(physics):
@@ -198,23 +195,16 @@ class FetchPick(base.Task):
         mocap = physics.bind(self._mocap)
         pos = fixed_pos if fixed_pos is not None else mocap.mocap_pos
         mocap.mocap_pos = pos
-        physics.step(100)
-        self._hand.set_grasp(physics, 1.)
-
+        physics.bind(self._hand.actuators[0]).ctrl = 255
         # set_pose only works because prop's parent is a worldbody.
         self._prop.set_pose(physics, pos)
         xvel, qvel = map(
             lambda vel: np.zeros_like(vel.copy()),
             self._prop.get_velocity(physics))
-        touch = self._prop.observables.touch
-        maxiter = 100
-        while touch(physics) < .1:
+        for _ in range(100):
             self._prop.set_pose(physics, mocap.mocap_pos)
             self._prop.set_velocity(physics, xvel, qvel)
             physics.step()
-            maxiter -= 1
-            if maxiter == 0:
-                raise EpisodeInitializationError
 
     def _initialize_on_table(self, physics, random_state):
         """Prop placed on the table."""

@@ -134,7 +134,6 @@ class PrimitiveObservables(composer.Observables,
         return obs
 
 
-# Usage of observation.enable is preferred over duplicating Observables.
 class StaticPrimitiveObservables(composer.Observables):
     """Primitive w/o velocity sensors output."""
 
@@ -234,7 +233,7 @@ class Capsule(Primitive):
 
 
 class _VertexSitesMixin:
-    """It differs from dm_control version in a treatment of the sites:
+    """It differs from dm_control version in sites treatment:
     existing sites will alternate instead of creating new every time."""
 
     def add_vertex_sites(self, box_geom_or_site):
