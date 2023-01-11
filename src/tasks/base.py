@@ -183,6 +183,7 @@ class Task(composer.Task, abc.ABC):
 
         joints.qpos = constants.HOME
         self._tcp_initializer(physics, random_state)
+        self._hand.set_grasp(physics, 0.)
 
         self._set_mocap(physics, tcp.xpos, base.xquat)
         eq_data[3:6] = -tcp.pos

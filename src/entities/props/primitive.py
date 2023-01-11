@@ -134,6 +134,7 @@ class PrimitiveObservables(composer.Observables,
         return obs
 
 
+# Usage of observation.enable is preferred over duplicating Observables.
 class StaticPrimitiveObservables(composer.Observables):
     """Primitive w/o velocity sensors output."""
 
