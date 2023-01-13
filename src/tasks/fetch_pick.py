@@ -17,8 +17,8 @@ _BOX_MASS = .1
 _BOX_SIZE = (.04, .03, .015)
 _BOX_OFFSET = np.array([-.5, .05, .1])
 
-_DISTANCE_THRESHOLD = .04
-_SCENE_SIZE = .1
+_DISTANCE_THRESHOLD = .03
+_SCENE_SIZE = .15
 _DEPTH_THRESH = 1.5
 
 
@@ -153,7 +153,7 @@ class FetchPick(base.Task):
     def initialize_episode(self, physics, random_state):
         try:
             # Goal on the table or in the air.
-            grounded_goal = random_state.choice([True, False], p=[.1, .9])
+            grounded_goal = random_state.choice([True, False], p=[.5, .5])
             if not self.eval_flag and grounded_goal:
                 self._initialize_on_table(physics, random_state)
             else:
@@ -164,13 +164,14 @@ class FetchPick(base.Task):
             physics.bind(self._target_site).pos = self._goal_pos
 
             # Begin from the grasped state (fixed): this can ease exploration.
-            midair_start = random_state.choice([True, False], p=[.1, .9])
+            midair_start = random_state.choice([True, False], p=[.5, .5])
             if not self.eval_flag and midair_start:
                 self._initialize_midair(
                     physics, random_state, fixed_pos=self._tcp_center)
             else:
                 self._initialize_on_table(physics, random_state)
             physics.step(100)
+            self._hand.set_grasp(physics, 0.)
 
             # Resample successful init.
             if self.get_success(physics):
@@ -207,7 +208,7 @@ class FetchPick(base.Task):
             lambda vel: np.zeros_like(vel.copy()),
             self._prop.get_velocity(physics))
         touch = self._prop.observables.touch
-        maxiter = 200
+        maxiter = 300
         while touch(physics) < .1:
             self._prop.set_pose(physics, mocap.mocap_pos)
             self._prop.set_velocity(physics, xvel, qvel)
