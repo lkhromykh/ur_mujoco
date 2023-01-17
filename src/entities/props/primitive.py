@@ -11,7 +11,7 @@ import numpy as np
 from src import constants
 
 _DEFAULT_HALF_LENGTHS = [0.05, 0.1, 0.15]
-_MAX_TOUCH = 100.
+_MAX_TOUCH = 200.
 
 
 class Primitive(composer.Entity):

@@ -81,7 +81,7 @@ class Arena(Entity):
         return frame
 
     def insert_mocap(self, body: mjcf.Element):
-        mocap = _connect_mocap(body, visual=False)
+        mocap = _connect_mocap(body, visible=False)
         self.mjcf_model.include_copy(mocap)
         return self.mjcf_model.find('body', 'mocap')
 
@@ -111,7 +111,7 @@ class Arena(Entity):
 
 
 def _connect_mocap(body: mjcf.Element,
-                   visual: bool = False
+                   visible: bool = False
                    ) -> mjcf.Element:
     """Connect mocap body to the element."""
     mocap = mjcf.RootElement()
@@ -122,7 +122,7 @@ def _connect_mocap(body: mjcf.Element,
         pos=pos,
         mocap='true',
     )
-    if visual:
+    if visible:
         mc_body.add(
             'geom',
             name='mocap',
