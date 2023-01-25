@@ -63,7 +63,7 @@ class FetchPick(base.Task):
     def __init__(self,
                  workspace: FetchWorkspace = _DEFAULT_WORKSPACE,
                  control_timestep: float = constants.CONTROL_TIMESTEP,
-                 img_size: Tuple[int, int] = (100, 100),
+                 img_size: Tuple[int, int] = (84, 84),
                  distance_threshold: float = _DISTANCE_THRESHOLD,
                  ):
         super().__init__(workspace, control_timestep, img_size)
@@ -127,7 +127,8 @@ class FetchPick(base.Task):
 
         def to_prop(physics):
             pos, _ = self._get_mocap(physics)
-            return self._prop.global_vector_to_local_frame(physics, pos)
+            obj_pos, _ = self._prop.get_pose(physics)
+            return np.linalg.norm(pos - obj_pos)
 
         self._task_observables['relative_distance'] = \
             observable.Generic(to_prop)
@@ -233,4 +234,4 @@ class FetchPick(base.Task):
         ach_pos = achieved_goal["box/position"]
         des_pos = desired_goal["box/position"]
         dist = np.linalg.norm(ach_pos - des_pos)
-        return dist < self._threshold
+        return float(dist < self._threshold)
