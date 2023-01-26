@@ -128,10 +128,16 @@ class FetchPick(base.Task):
         def to_prop(physics):
             pos, _ = self._get_mocap(physics)
             obj_pos, _ = self._prop.get_pose(physics)
-            return np.linalg.norm(pos - obj_pos)
+            return obj_pos - pos
 
-        self._task_observables['relative_distance'] = \
+        def to_target(physics):
+            pos, _ = self._get_mocap(physics)
+            return self._goal_pos - pos
+
+        self._task_observables['prop_distance'] =\
             observable.Generic(to_prop)
+        self._task_observables['target_distance'] =\
+            observable.Generic(to_target)
 
         self.__post_init__()
 
