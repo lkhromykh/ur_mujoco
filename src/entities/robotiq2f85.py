@@ -68,6 +68,10 @@ class RobotiqObservables(composer.Observables):
     def tcp_pose(self):
         return observable.MJCFFeature('xpos', self._entity.tool_center_point)
 
+    @composer.observable
+    def pos(self):
+        return observable.MJCFFeature('length', self._entity.actuators)
+
     # For now tcp has fixed orientation.
     # @composer.observable
     def tcp_rmat(self):

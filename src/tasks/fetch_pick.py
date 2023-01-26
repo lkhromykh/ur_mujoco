@@ -131,7 +131,7 @@ class FetchPick(base.Task):
             return obj_pos - pos
 
         def to_target(physics):
-            pos, _ = self._get_mocap(physics)
+            pos, _ = self._prop.get_pose(physics)
             return self._goal_pos - pos
 
         self._task_observables['prop_distance'] =\
