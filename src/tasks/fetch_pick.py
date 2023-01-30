@@ -17,7 +17,7 @@ _BOX_MASS = .1
 _BOX_SIZE = (.04, .03, .015)
 _BOX_OFFSET = np.array([-.5, .05, .1])
 
-_DISTANCE_THRESHOLD = .05
+_DISTANCE_THRESHOLD = .04
 _SCENE_SIZE = .15
 _DEPTH_THRESH = 1.5
 
@@ -35,11 +35,11 @@ _upper = lambda h=0: np.array([_SCENE_SIZE, _SCENE_SIZE, h])
 _DEFAULT_WORKSPACE = FetchWorkspace(
     tcp_bbox=workspaces.BoundingBox(
         lower=_BOX_OFFSET + _lower(),
-        upper=_BOX_OFFSET + _upper(.2),
+        upper=_BOX_OFFSET + _upper(.3),
     ),
     scene_bbox=workspaces.BoundingBox(
-        lower=_BOX_OFFSET + _lower(-_BOX_OFFSET[-1]),
-        upper=_BOX_OFFSET + _upper(.2),
+        lower=_BOX_OFFSET + _lower(- _BOX_OFFSET[-1]),
+        upper=_BOX_OFFSET + _upper(.3),
     ),
     prop_bbox=workspaces.BoundingBox(
         lower=_BOX_OFFSET + _lower(),
@@ -131,7 +131,7 @@ class FetchPick(base.Task):
             return obj_pos - pos
 
         def to_target(physics):
-            pos, _ = self._prop.get_pose(physics)
+            pos, _ = self._get_mocap(physics)
             return self._goal_pos - pos
 
         self._task_observables['prop_distance'] =\
@@ -171,7 +171,8 @@ class FetchPick(base.Task):
             physics.bind(self._target_site).pos = self._goal_pos
 
             # Begin from the grasped state (fixed): this can ease exploration.
-            midair_start = random_state.choice([True, False], p=[.5, .5])
+            # midair_start = random_state.choice([True, False], p=[.5, .5])
+            midair_start = False
             if not self.eval_flag and midair_start:
                 self._initialize_midair(
                     physics, random_state, fixed_pos=self._tcp_center)
@@ -189,7 +190,7 @@ class FetchPick(base.Task):
             is_invalid = np.logical_or(pos < low, pos > high)
             if np.any(is_invalid[:-1]):
                 self.initialize_episode(physics, random_state)
-        except (PhysicsError, RuntimeError, AttributeError) as exp:
+        except Exception as exp:
             # composer.Environment can handle errors on init.
             raise EpisodeInitializationError(exp) from exp
 
@@ -198,6 +199,9 @@ class FetchPick(base.Task):
         pos, _ = self._prop.get_pose(physics)
         dist = np.linalg.norm(pos - self._goal_pos)
         return dist < self._threshold
+
+    def should_terminate_episode(self, physics):
+        return False
 
     # TODO: fix impossible configurations that lead to divergences.
     def _initialize_midair(self, physics, random_state, fixed_pos=None):
@@ -240,4 +244,4 @@ class FetchPick(base.Task):
         ach_pos = achieved_goal["box/position"]
         des_pos = desired_goal["box/position"]
         dist = np.linalg.norm(ach_pos - des_pos)
-        return float(dist < self._threshold)
+        return dist < self._threshold
