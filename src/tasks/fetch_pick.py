@@ -19,7 +19,6 @@ _BOX_OFFSET = np.array([-.5, .05, .1])
 
 _DISTANCE_THRESHOLD = .05
 _SCENE_SIZE = .15
-_DEPTH_THRESH = 1.5
 
 
 class FetchWorkspace(NamedTuple):
@@ -38,7 +37,7 @@ _DEFAULT_WORKSPACE = FetchWorkspace(
         upper=_BOX_OFFSET + _upper(.3),
     ),
     scene_bbox=workspaces.BoundingBox(
-        lower=_BOX_OFFSET + _lower(- _BOX_OFFSET[-1]),
+        lower=_BOX_OFFSET + _lower(-_BOX_OFFSET[-1]),
         upper=_BOX_OFFSET + _upper(.3),
     ),
     prop_bbox=workspaces.BoundingBox(
@@ -63,7 +62,7 @@ class FetchPick(base.Task):
     def __init__(self,
                  workspace: FetchWorkspace = _DEFAULT_WORKSPACE,
                  control_timestep: float = constants.CONTROL_TIMESTEP,
-                 img_size: Tuple[int, int] = (84, 84),
+                 img_size: Tuple[int, int] = (100, 100),
                  distance_threshold: float = _DISTANCE_THRESHOLD,
                  ):
         super().__init__(workspace, control_timestep, img_size)
@@ -108,36 +107,36 @@ class FetchPick(base.Task):
         self._task_observables['goal_pos'] = \
             observable.Generic(lambda _: self._goal_pos)
 
-        w, h = img_size
-        self._goal_rgbd = np.zeros(img_size + (4,), np.uint8)
-
-        def rgbd(physics):
-            img = physics.render(width=w, height=h, camera_id="kinect")
-            depth = physics.render(
-                width=w, height=h, camera_id="kinect", depth=True)
-            # bad practice lower.
-            depth += np.random.normal(loc=0, scale=.005, size=depth.shape)
-            depth = np.clip(depth, a_min=0, a_max=_DEPTH_THRESH)
-            depth = np.uint8(255 * depth / _DEPTH_THRESH)
-            return np.concatenate([img, depth[..., np.newaxis]], -1)
-
-        self._task_observables["rgbd"] = observable.Generic(rgbd)
-        self._task_observables["goal_rgbd"] = \
-            observable.Generic(lambda _: self._goal_rgbd)
+        # w, h = img_size
+        # # in meters
+        # nearest, farthest = 0.05, 2.
+        # self._goal_rgbd = np.zeros(img_size + (4,), np.uint8)
+        #
+        # def depth_fn(physics):
+        #     """Mujoco returns distance in meters."""
+        #     depth = physics.render(
+        #         width=w, height=h, camera_id="kinect", depth=True)
+        #     depth += np.random.normal(scale=.01, size=depth.shape)
+        #     depth = (depth - nearest) / (farthest - nearest)
+        #     depth = np.clip(depth, 0, 1)
+        #     return np.uint8(255 * depth)
+        #
+        # def rgbd(physics):
+        #     img = physics.render(width=w, height=h, camera_id="kinect")
+        #     depth = depth_fn(physics)
+        #     return np.concatenate([img, depth[..., np.newaxis]], -1)
+        #
+        # self._task_observables["rgbd"] = observable.Generic(rgbd)
+        # self._task_observables["goal_rgbd"] = \
+        #     observable.Generic(lambda _: self._goal_rgbd)
 
         def to_prop(physics):
             pos, _ = self._get_mocap(physics)
             obj_pos, _ = self._prop.get_pose(physics)
             return obj_pos - pos
 
-        def to_target(physics):
-            pos, _ = self._get_mocap(physics)
-            return self._goal_pos - pos
-
         self._task_observables['prop_distance'] =\
             observable.Generic(to_prop)
-        self._task_observables['target_distance'] =\
-            observable.Generic(to_target)
 
         self.__post_init__()
 
@@ -172,7 +171,6 @@ class FetchPick(base.Task):
 
             # Begin from the grasped state (fixed): this can ease exploration.
             midair_start = random_state.choice([True, False], p=[.5, .5])
-            # midair_start = False
             if not self.eval_flag and midair_start:
                 self._initialize_midair(
                     physics, random_state, fixed_pos=self._tcp_center)
@@ -235,8 +233,8 @@ class FetchPick(base.Task):
 
     def _prepare_goal(self, physics, random_state):
         """Snap current observations as a desired episode goal."""
-        rgbd = self.task_observables["rgbd"]
-        self._goal_rgbd = rgbd(physics, random_state).copy()
+        # rgbd = self.task_observables["rgbd"]
+        # self._goal_rgbd = rgbd(physics, random_state).copy()
         pos, _ = self._prop.get_pose(physics)
         self._goal_pos = pos.copy()
 

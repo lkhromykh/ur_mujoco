@@ -199,7 +199,7 @@ class Task(composer.Task, abc.ABC):
             gripper --: Discrete()
         TCP orientation remains fixed.
         """
-        action = np.clip(action, a_min=-1, a_max=1)
+        action = np.clip(action.copy(), a_min=-1, a_max=1)
         pos, grip = action[:-1], action[-1]
         close_factor = float(grip > 0)
         self._hand.set_grasp(physics, close_factor)
