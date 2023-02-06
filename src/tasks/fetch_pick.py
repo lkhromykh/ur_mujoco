@@ -116,6 +116,7 @@ class FetchPick(base.Task):
             """Mujoco returns distance in meters."""
             depth = physics.render(
                 width=w, height=h, camera_id="kinect", depth=True)
+            depth *= np.random.random(depth.shape) > .1
             depth += np.random.normal(scale=.01, size=depth.shape)
             depth = (depth - nearest) / (farthest - nearest)
             depth = np.clip(depth, 0, 1)
@@ -170,7 +171,8 @@ class FetchPick(base.Task):
             physics.bind(self._target_site).pos = self._goal_pos
 
             # Begin from the grasped state (fixed): this can ease exploration.
-            midair_start = random_state.choice([True, False], p=[.5, .5])
+            # midair_start = random_state.choice([True, False], p=[.5, .5])
+            midair_start = False
             if not self.eval_flag and midair_start:
                 self._initialize_midair(
                     physics, random_state, fixed_pos=self._tcp_center)
