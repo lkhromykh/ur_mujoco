@@ -107,28 +107,28 @@ class FetchPick(base.Task):
         self._task_observables['goal_pos'] = \
             observable.Generic(lambda _: self._goal_pos)
 
-        # w, h = img_size
-        # # in meters
-        # nearest, farthest = 0.05, 2.
-        # self._goal_rgbd = np.zeros(img_size + (4,), np.uint8)
-        #
-        # def depth_fn(physics):
-        #     """Mujoco returns distance in meters."""
-        #     depth = physics.render(
-        #         width=w, height=h, camera_id="kinect", depth=True)
-        #     depth += np.random.normal(scale=.01, size=depth.shape)
-        #     depth = (depth - nearest) / (farthest - nearest)
-        #     depth = np.clip(depth, 0, 1)
-        #     return np.uint8(255 * depth)
-        #
-        # def rgbd(physics):
-        #     img = physics.render(width=w, height=h, camera_id="kinect")
-        #     depth = depth_fn(physics)
-        #     return np.concatenate([img, depth[..., np.newaxis]], -1)
-        #
-        # self._task_observables["rgbd"] = observable.Generic(rgbd)
-        # self._task_observables["goal_rgbd"] = \
-        #     observable.Generic(lambda _: self._goal_rgbd)
+        w, h = img_size
+        # in meters
+        nearest, farthest = 0.05, 2.
+        self._goal_rgbd = np.zeros(img_size + (4,), np.uint8)
+
+        def depth_fn(physics):
+            """Mujoco returns distance in meters."""
+            depth = physics.render(
+                width=w, height=h, camera_id="kinect", depth=True)
+            depth += np.random.normal(scale=.01, size=depth.shape)
+            depth = (depth - nearest) / (farthest - nearest)
+            depth = np.clip(depth, 0, 1)
+            return np.uint8(255 * depth)
+
+        def rgbd(physics):
+            img = physics.render(width=w, height=h, camera_id="kinect")
+            depth = depth_fn(physics)
+            return np.concatenate([img, depth[..., np.newaxis]], -1)
+
+        self._task_observables["rgbd"] = observable.Generic(rgbd)
+        self._task_observables["goal_rgbd"] = \
+            observable.Generic(lambda _: self._goal_rgbd)
 
         def to_prop(physics):
             pos, _ = self._get_mocap(physics)
@@ -153,8 +153,8 @@ class FetchPick(base.Task):
         super()._build_observables()
         self._prop.observables.enable_all()
 
-    def initialize_episode_mjcf(self, random_state):
-        del random_state
+    # def initialize_episode_mjcf(self, random_state):
+    #     del random_state
 
     def initialize_episode(self, physics, random_state):
         try:
@@ -233,8 +233,8 @@ class FetchPick(base.Task):
 
     def _prepare_goal(self, physics, random_state):
         """Snap current observations as a desired episode goal."""
-        # rgbd = self.task_observables["rgbd"]
-        # self._goal_rgbd = rgbd(physics, random_state).copy()
+        rgbd = self.task_observables["rgbd"]
+        self._goal_rgbd = rgbd(physics, random_state).copy()
         pos, _ = self._prop.get_pose(physics)
         self._goal_pos = pos.copy()
 
