@@ -5,7 +5,7 @@ import numpy as np
 from dm_control.composer import initializers
 from dm_control.manipulation.shared import workspaces
 from dm_control.composer.observation import observable
-from dm_control.composer.variation import distributions
+from dm_control.composer.variation import distributions, noises
 from dm_control.rl.control import PhysicsError
 from dm_control.composer.environment import EpisodeInitializationError
 
@@ -116,8 +116,9 @@ class FetchPick(base.Task):
             """Mujoco returns distance in meters."""
             depth = physics.render(
                 width=w, height=h, camera_id="kinect", depth=True)
+            depth = np.where(depth > 6., 0, depth)
             depth *= np.random.random(depth.shape) > .1
-            depth += np.random.normal(scale=.01, size=depth.shape)
+            depth += np.random.normal(scale=.02, size=depth.shape)
             depth = (depth - nearest) / (farthest - nearest)
             depth = np.clip(depth, 0, 1)
             return np.uint8(255 * depth)
@@ -145,7 +146,7 @@ class FetchPick(base.Task):
         super()._build_variations()
         self._mjcf_variation.bind_attributes(
             self._prop.geom,
-            # rgba=base.RgbVariation(),
+            rgba=noises.Additive(base.RgbVariation(-.3, .3)),
             size=distributions.Uniform(.01, .03),
             mass=distributions.Uniform(.1, .5)
         )
@@ -155,12 +156,13 @@ class FetchPick(base.Task):
         self._prop.observables.enable_all()
 
     # def initialize_episode_mjcf(self, random_state):
-    #     del random_state
+    #    del random_state
 
     def initialize_episode(self, physics, random_state):
         try:
             # Goal on the table or in the air.
-            grounded_goal = random_state.choice([True, False], p=[.5, .5])
+            #grounded_goal = random_state.choice([True, False], p=[.5, .5])
+            grounded_goal = False
             if not self.eval_flag and grounded_goal:
                 self._initialize_on_table(physics, random_state)
             else:
@@ -171,8 +173,8 @@ class FetchPick(base.Task):
             physics.bind(self._target_site).pos = self._goal_pos
 
             # Begin from the grasped state (fixed): this can ease exploration.
-            # midair_start = random_state.choice([True, False], p=[.5, .5])
-            midair_start = False
+            midair_start = random_state.choice([True, False], p=[.5, .5])
+            # midair_start = False
             if not self.eval_flag and midair_start:
                 self._initialize_midair(
                     physics, random_state, fixed_pos=self._tcp_center)
