@@ -125,11 +125,12 @@ class FetchPick(base.Task):
 
         def rgbd(physics):
             img = physics.render(width=w, height=h, camera_id="kinect")
+            return img
             depth = depth_fn(physics)
             return np.concatenate([img, depth[..., np.newaxis]], -1)
 
-        self._task_observables["rgbd"] = observable.Generic(rgbd)
-        self._task_observables["goal_rgbd"] = \
+        self._task_observables["rgb"] = observable.Generic(rgbd)
+        self._task_observables["goal_rgb"] = \
             observable.Generic(lambda _: self._goal_rgbd)
 
         def to_prop(physics):
@@ -237,7 +238,7 @@ class FetchPick(base.Task):
 
     def _prepare_goal(self, physics, random_state):
         """Snap current observations as a desired episode goal."""
-        rgbd = self.task_observables["rgbd"]
+        rgbd = self.task_observables["rgb"]
         self._goal_rgbd = rgbd(physics, random_state).copy()
         pos, _ = self._prop.get_pose(physics)
         self._goal_pos = pos.copy()
